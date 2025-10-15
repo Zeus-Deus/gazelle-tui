@@ -1,115 +1,124 @@
-"""NetworkManager interface using nmcli"""
+"""NetworkManager interface"""
 import subprocess
-import re
+
+def get_wifi_interface():
+    """Auto-detect WiFi interface"""
+    try:
+        result = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,TYPE', 'device'],
+                               capture_output=True, text=True, check=True)
+        for line in result.stdout.strip().split('\n'):
+            if ':wifi' in line:
+                return line.split(':')[0]
+    except:
+        pass
+    return 'wlan0'
 
 def get_wifi_list():
-    """Get list of available WiFi networks"""
+    """Get available WiFi networks"""
     try:
         result = subprocess.run(
             ['nmcli', '-t', '-f', 'SSID,SIGNAL,SECURITY,IN-USE', 'device', 'wifi', 'list'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+            capture_output=True, text=True, check=True)
         
-        networks = []
-        seen_ssids = set()
-        
+        networks, seen = [], set()
         for line in result.stdout.strip().split('\n'):
             if not line:
                 continue
-                
             parts = line.split(':')
-            if len(parts) < 4:
-                continue
-                
-            ssid = parts[0].strip()
-            if not ssid or ssid in seen_ssids:
-                continue
-                
-            seen_ssids.add(ssid)
-            
-            networks.append({
-                'ssid': ssid,
-                'signal': int(parts[1]) if parts[1] else 0,
-                'security': parts[2],
-                'connected': parts[3] == '*'
-            })
-        
+            if len(parts) >= 4 and parts[0] and parts[0] not in seen:
+                seen.add(parts[0])
+                networks.append({
+                    'ssid': parts[0],
+                    'signal': int(parts[1]) if parts[1] else 0,
+                    'security': parts[2],
+                    'connected': parts[3] == '*'
+                })
         return sorted(networks, key=lambda x: x['signal'], reverse=True)
-    
-    except Exception as e:
+    except:
         return []
 
 def get_current_connection():
-    """Get currently connected network"""
+    """Get active connection name"""
     try:
-        result = subprocess.run(
-            ['nmcli', '-t', '-f', 'NAME', 'connection', 'show', '--active'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        connections = result.stdout.strip().split('\n')
-        return connections[0] if connections and connections[0] else None
+        result = subprocess.run(['nmcli', '-t', '-f', 'NAME', 'connection', 'show', '--active'],
+                               capture_output=True, text=True, check=True)
+        return result.stdout.strip().split('\n')[0] or None
     except:
         return None
 
-def connect_wifi(ssid, password):
-    """Connect to regular WiFi network"""
+def get_station_info():
+    """Get station status"""
     try:
-        result = subprocess.run(
-            ['nmcli', 'device', 'wifi', 'connect', ssid, 'password', password],
-            capture_output=True,
-            text=True
-        )
+        current = get_current_connection()
+        info = {'state': 'connected' if current else 'disconnected', 
+                'scanning': 'false', 'frequency': '-', 'security': '-'}
+        
+        if current:
+            result = subprocess.run(['nmcli', '-t', '-f', 'ACTIVE,SSID,FREQ,SECURITY', 
+                                    'device', 'wifi', 'list'], capture_output=True, text=True)
+            for line in result.stdout.strip().split('\n'):
+                if line.startswith('yes:') or line.startswith('*:'):
+                    parts = line.split(':')
+                    if len(parts) >= 4:
+                        info['frequency'] = parts[2] or '-'
+                        info['security'] = parts[3] or '-'
+                    break
+        return info
+    except:
+        return {'state': 'disconnected', 'scanning': 'false', 'frequency': '-', 'security': '-'}
+
+def connect_wifi(ssid, password):
+    """Connect to WiFi"""
+    try:
+        result = subprocess.run(['nmcli', 'device', 'wifi', 'connect', ssid, 'password', password],
+                               capture_output=True, text=True)
         return result.returncode == 0, result.stderr or result.stdout
     except Exception as e:
         return False, str(e)
 
-def connect_802_1x(ssid, username, password, auth_method='peap'):
-    """Connect to 802.1X enterprise WiFi (eduroam)"""
+def connect_802_1x(ssid, username, password, eap_method="peap", phase2_auth="mschapv2"):
+    """Connect to 802.1X enterprise WiFi
+    
+    Supports:
+    - EAP: peap, ttls, tls
+    - Phase2: mschapv2, mschap, pap, chap, gtc, md5
+    """
     try:
-        # Remove existing connection if it exists
-        subprocess.run(['nmcli', 'connection', 'delete', ssid], 
-                      capture_output=True)
+        iface = get_wifi_interface()
+        subprocess.run(['nmcli', 'connection', 'delete', ssid], capture_output=True)
         
-        # Create new 802.1X connection
-        result = subprocess.run([
-            'nmcli', 'connection', 'add',
-            'type', 'wifi',
-            'con-name', ssid,
-            'ifname', 'wlan0',
-            'ssid', ssid,
-            'wifi-sec.key-mgmt', 'wpa-eap',
-            '802-1x.eap', auth_method,
-            '802-1x.phase2-auth', 'mschapv2',
-            '802-1x.identity', username,
-            '802-1x.password', password
-        ], capture_output=True, text=True)
+        # Build command based on EAP method
+        cmd = [
+            'nmcli', 'connection', 'add', 'type', 'wifi', 'con-name', ssid,
+            'ifname', iface, 'ssid', ssid, 'wifi-sec.key-mgmt', 'wpa-eap',
+            '802-1x.eap', eap_method.lower(), '802-1x.identity', username
+        ]
+        
+        # Add auth-specific parameters
+        if eap_method.lower() in ['peap', 'ttls']:
+            # PEAP and TTLS use phase2 auth + password
+            cmd.extend(['802-1x.phase2-auth', phase2_auth.lower()])
+            cmd.extend(['802-1x.password', password])
+        elif eap_method.lower() == 'tls':
+            # TLS uses certificates (for now, treat password as private key password)
+            cmd.extend(['802-1x.private-key-password', password])
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode != 0:
             return False, result.stderr
         
-        # Activate connection
-        result = subprocess.run(
-            ['nmcli', 'connection', 'up', ssid],
-            capture_output=True,
-            text=True
-        )
-        return result.returncode == 0, result.stderr or "Connected!"
-    
+        result = subprocess.run(['nmcli', 'connection', 'up', ssid],
+                               capture_output=True, text=True)
+        return result.returncode == 0, result.stderr or "Connected"
     except Exception as e:
         return False, str(e)
 
 def disconnect():
-    """Disconnect from current network"""
+    """Disconnect from network"""
     try:
-        result = subprocess.run(
-            ['nmcli', 'device', 'disconnect', 'wlan0'],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(['nmcli', 'device', 'disconnect', get_wifi_interface()],
+                               capture_output=True, text=True)
         return result.returncode == 0
     except:
         return False
@@ -117,11 +126,7 @@ def disconnect():
 def wifi_enabled():
     """Check if WiFi is enabled"""
     try:
-        result = subprocess.run(
-            ['nmcli', 'radio', 'wifi'],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(['nmcli', 'radio', 'wifi'], capture_output=True, text=True)
         return result.stdout.strip() == 'enabled'
     except:
         return True
@@ -130,12 +135,11 @@ def toggle_wifi():
     """Toggle WiFi on/off"""
     try:
         enabled = wifi_enabled()
-        state = 'off' if enabled else 'on'
-        subprocess.run(['nmcli', 'radio', 'wifi', state])
+        subprocess.run(['nmcli', 'radio', 'wifi', 'off' if enabled else 'on'])
         return not enabled
     except:
         return wifi_enabled()
 
 def is_enterprise(security):
-    """Check if network uses 802.1X"""
+    """Check if network is 802.1X"""
     return 'WPA-EAP' in security or '802.1X' in security
