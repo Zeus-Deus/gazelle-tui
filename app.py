@@ -7,10 +7,33 @@ from textual.binding import Binding
 from network import *
 import subprocess
 
+class HiddenNetworkScreen(ModalScreen):
+    """Modal for connecting to hidden SSID"""
+    
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static("Connect to Hidden Network", id="title"),
+            Static("SSID:"), Input(placeholder="Network name", id="ssid"),
+            Static("Security:"),
+            Select([("Open", "open"), ("WPA2/WPA3", "psk"), ("802.1X Enterprise", "8021x")], 
+                   value="psk", id="sec"),
+            Horizontal(Button("Next", variant="primary", id="next"), Button("Cancel", id="cancel")),
+            id="dialog"
+        )
+    
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel":
+            self.app.pop_screen()
+        elif event.button.id == "next":
+            ssid = self.query_one("#ssid", Input).value
+            sec = self.query_one("#sec", Select).value
+            if ssid:
+                self.dismiss((ssid, sec))
+
 class PasswordScreen(ModalScreen):
-    def __init__(self, ssid, is_enterprise=False):
+    def __init__(self, ssid, is_enterprise=False, is_hidden=False):
         super().__init__()
-        self.ssid, self.is_enterprise = ssid, is_enterprise
+        self.ssid, self.is_enterprise, self.is_hidden = ssid, is_enterprise, is_hidden
     
     def compose(self) -> ComposeResult:
         if self.is_enterprise:
@@ -44,15 +67,15 @@ class PasswordScreen(ModalScreen):
                 eap = self.query_one("#eap", Select).value
                 phase2 = self.query_one("#phase2", Select).value
                 if u and p:
-                    self.dismiss((self.ssid, p, u, True, eap, phase2))
+                    self.dismiss((self.ssid, p, u, True, eap, phase2, self.is_hidden))
             else:
                 p = self.query_one("#pwd", Input).value
                 if p:
-                    self.dismiss((self.ssid, p, None, False, None, None))
+                    self.dismiss((self.ssid, p, None, False, None, None, self.is_hidden))
 
 class Gazelle(App):
     CSS = """
-    PasswordScreen { align: center middle; }
+    PasswordScreen, HiddenNetworkScreen { align: center middle; }
     #dialog { width: 60; border: thick $accent; background: $surface; padding: 1 2; }
     #title { text-style: bold; color: $accent; margin-bottom: 1; }
     .section { border: solid $accent; margin: 1 2; padding: 0 1; }
@@ -69,6 +92,7 @@ class Gazelle(App):
         Binding("space", "select", "Connect"),
         Binding("s", "scan", "Scan"),
         Binding("d", "disconnect", "Disconnect"),
+        Binding("h", "hidden", "Hidden"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
         Binding("?", "help", "Help"),
     ]
@@ -130,7 +154,14 @@ class Gazelle(App):
                     # Only show if network is in range
                     if name in avail:
                         s = avail[name]['security']
-                        sec = "802.1x" if is_enterprise(s) else ("psk" if s else "-")
+                        if is_enterprise(s):
+                            sec = "802.1x"
+                        elif is_owe(s):
+                            sec = "owe"
+                        elif s:
+                            sec = "psk"
+                        else:
+                            sec = "-"
                         sig = f"{avail[name]['signal']}%"
                         t.add_row(name, sec, sig)
         except:
@@ -141,7 +172,14 @@ class Gazelle(App):
         t.clear()
         for n in get_wifi_list():
             if n['ssid'] not in known_ssids:
-                sec = "802.1x" if is_enterprise(n['security']) else ("psk" if n['security'] else "-")
+                if is_enterprise(n['security']):
+                    sec = "802.1x"
+                elif is_owe(n['security']):
+                    sec = "owe"
+                elif n['security']:
+                    sec = "psk"
+                else:
+                    sec = "-"
                 t.add_row(n['ssid'], sec, f"{n['signal']}%")
     
     def _get_focused_table(self):
@@ -192,25 +230,43 @@ class Gazelle(App):
                 self.refresh_all()
             else:
                 if sec == "802.1x":
-                    self.push_screen(PasswordScreen(ssid, True), self.handle_connect)
+                    self.push_screen(PasswordScreen(ssid, is_enterprise=True), self.handle_connect)
                 elif sec == "psk":
-                    self.push_screen(PasswordScreen(ssid, False), self.handle_connect)
-                else:
-                    ok, msg = connect_wifi(ssid, "")
+                    self.push_screen(PasswordScreen(ssid, is_enterprise=False), self.handle_connect)
+                else:  # Open or OWE - NetworkManager handles OWE automatically
+                    ok, msg = connect_wifi(ssid, "", hidden=False)
                     self.notify("✓ Connected" if ok else f"✗ {msg}")
                     self.refresh_all()
     
     def handle_connect(self, result) -> None:
         if not result:
             return
-        ssid, pwd, user, is_ent, eap, phase2 = result
+        ssid, pwd, user, is_ent, eap, phase2, is_hidden = result
         self.notify("Connecting...")
         if is_ent:
-            ok, msg = connect_802_1x(ssid, user, pwd, eap or "peap", phase2 or "mschapv2")
+            ok, msg = connect_802_1x(ssid, user, pwd, eap or "peap", phase2 or "mschapv2", is_hidden)
         else:
-            ok, msg = connect_wifi(ssid, pwd)
+            ok, msg = connect_wifi(ssid, pwd, is_hidden)
         self.notify("✓ Connected" if ok else f"✗ {msg}")
         self.refresh_all()
+    
+    def action_hidden(self) -> None:
+        """Connect to hidden network (h key)"""
+        def handle_hidden(result):
+            if not result:
+                return
+            ssid, sec = result
+            if sec == "open":
+                self.notify("Connecting...")
+                ok, msg = connect_wifi(ssid, "", hidden=True)
+                self.notify("✓ Connected" if ok else f"✗ {msg}")
+                self.refresh_all()
+            elif sec == "psk":
+                self.push_screen(PasswordScreen(ssid, is_enterprise=False, is_hidden=True), self.handle_connect)
+            else:  # 8021x
+                self.push_screen(PasswordScreen(ssid, is_enterprise=True, is_hidden=True), self.handle_connect)
+        
+        self.push_screen(HiddenNetworkScreen(), handle_hidden)
     
     def action_disconnect(self) -> None:
         self.notify("Disconnected" if disconnect() else "Not connected")
@@ -221,4 +277,4 @@ class Gazelle(App):
         self.set_timer(1, self.refresh_all)
     
     def action_help(self) -> None:
-        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan d:Disconnect q:Quit", timeout=5)
+        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden d:Disconnect q:Quit", timeout=5)

@@ -76,12 +76,13 @@ def connect_wifi(ssid, password):
     except Exception as e:
         return False, str(e)
 
-def connect_802_1x(ssid, username, password, eap_method="peap", phase2_auth="mschapv2"):
-    """Connect to 802.1X enterprise WiFi
+def connect_802_1x(ssid, username, password, eap_method="peap", phase2_auth="mschapv2", hidden=False):
+    """Connect to 802.1X enterprise WiFi (supports hidden SSIDs)
     
     Supports:
     - EAP: peap, ttls, tls
     - Phase2: mschapv2, mschap, pap, chap, gtc, md5
+    - Hidden SSID networks
     """
     try:
         iface = get_wifi_interface()
@@ -93,6 +94,10 @@ def connect_802_1x(ssid, username, password, eap_method="peap", phase2_auth="msc
             'ifname', iface, 'ssid', ssid, 'wifi-sec.key-mgmt', 'wpa-eap',
             '802-1x.eap', eap_method.lower(), '802-1x.identity', username
         ]
+        
+        # Add hidden SSID support
+        if hidden:
+            cmd.extend(['wifi.hidden', 'yes'])
         
         # Add auth-specific parameters
         if eap_method.lower() in ['peap', 'ttls']:
@@ -143,3 +148,7 @@ def toggle_wifi():
 def is_enterprise(security):
     """Check if network is 802.1X"""
     return 'WPA-EAP' in security or '802.1X' in security
+
+def is_owe(security):
+    """Check if network uses OWE (Enhanced Open / WPA3-OWE)"""
+    return 'OWE' in security or 'WPA3-OWE' in security

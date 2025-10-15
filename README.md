@@ -18,7 +18,9 @@ chmod +x gazelle
 ## Features
 
 - ✅ **Complete 802.1X Support** (PEAP/TTLS/TLS with all phase2 auth methods)
-- ✅ Connect to regular WiFi (WPA/WPA2-PSK)
+- ✅ **Hidden SSID Networks** - Connect to networks that don't broadcast
+- ✅ **WPA3-OWE Support** - Enhanced Open (encrypted open networks)
+- ✅ Connect to regular WiFi (WPA/WPA2/WPA3-PSK)
 - ✅ Connect to enterprise WiFi (eduroam, corporate networks)
 - ✅ Scan for networks
 - ✅ Auto-connect to known networks in range
@@ -50,6 +52,7 @@ When connecting to an 802.1X network, simply select your authentication method f
 - `Tab` - Switch between Known/New Networks sections
 - `Space` - Connect to selected network
 - `s` - Scan for networks
+- `h` - Connect to hidden network
 - `d` - Disconnect
 - `Ctrl+R` - Toggle WiFi on/off
 - `?` - Show help
@@ -66,6 +69,20 @@ When connecting to an 802.1X network, simply select your authentication method f
 7. Connect!
 
 The connection is saved and will auto-reconnect when in range.
+
+## Connecting to Hidden Networks
+
+Many corporate/enterprise networks hide their SSID for security.
+
+1. Press `h` (Hidden)
+2. Enter the network name (SSID)
+3. Select security type (Open/WPA2/802.1X)
+4. Enter credentials if needed
+5. Connect!
+
+## WPA3-OWE (Enhanced Open)
+
+Gazelle automatically detects and connects to OWE networks (shown as "owe" in Security column). These are encrypted open networks that provide better security than traditional open WiFi. NetworkManager handles the encryption automatically - just connect like any open network.
 
 ## NetworkManager Integration
 
