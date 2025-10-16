@@ -67,11 +67,16 @@ def get_station_info():
     except:
         return {'state': 'disconnected', 'scanning': 'false', 'frequency': '-', 'security': '-'}
 
-def connect_wifi(ssid, password):
-    """Connect to WiFi"""
+def connect_wifi(ssid, password, hidden=False):
+    """Connect to WiFi (supports hidden SSIDs)"""
     try:
-        result = subprocess.run(['nmcli', 'device', 'wifi', 'connect', ssid, 'password', password],
-                               capture_output=True, text=True)
+        cmd = ['nmcli', 'device', 'wifi', 'connect', ssid]
+        if password:
+            cmd.extend(['password', password])
+        if hidden:
+            cmd.append('hidden')
+            cmd.append('yes')
+        result = subprocess.run(cmd, capture_output=True, text=True)
         return result.returncode == 0, result.stderr or result.stdout
     except Exception as e:
         return False, str(e)
