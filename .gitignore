@@ -24,3 +24,6 @@ Thumbs.db
 
 # Conda
 .conda/
+
+# AUR (only needed in AUR repo)
+.SRCINFO
