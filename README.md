@@ -2,6 +2,8 @@
 
 A minimal NetworkManager TUI for Linux with **complete 802.1X enterprise WiFi support**.
 
+![Gazelle Screenshot](screenshots/Gazelle-home-new-edited.jpg)
+
 ## Why Gazelle?
 
 A minimal, keyboard-driven TUI for NetworkManager with **full 802.1X enterprise WiFi support**. Perfect for connecting to eduroam, corporate networks, and regular WiFi from the terminal.
