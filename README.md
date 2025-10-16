@@ -52,6 +52,75 @@ chmod +x gazelle
 ./gazelle
 ```
 
+## Omarchy Integration
+
+To integrate Gazelle as your WiFi TUI in Omarchy (replacing Impala):
+
+### Step 1: Install Gazelle
+
+```bash
+# Temporarily add Arch mirrors (Omarchy mirror sync issue)
+sudo sed -i '1iServer = https://geo.mirror.pkgbuild.com/$repo/os/$arch' /etc/pacman.d/mirrorlist
+sudo pacman -Syy
+
+# Install from AUR
+yay -S gazelle-tui
+```
+
+### Step 2: Configure Hyprland Window Rules
+
+Create a window rules configuration file:
+
+```bash
+cat > ~/.config/hypr/windows.conf << 'EOF'
+# Gazelle WiFi TUI - floating window like Impala
+windowrule = tag +floating-window, class:(Gazelle)
+EOF
+```
+
+Add the source line to your Hyprland config:
+
+```bash
+echo "source = ~/.config/hypr/windows.conf" >> ~/.config/hypr/hyprland.conf
+```
+
+### Step 3: Update Waybar Network Module
+
+Edit `~/.config/waybar/config.jsonc` and change the network module's `on-click`:
+
+```json
+"network": {
+    ...
+    "on-click": "$TERMINAL --class=Gazelle -e gazelle"
+}
+```
+
+### Step 4: Apply Changes
+
+```bash
+# Reload Hyprland configuration
+hyprctl reload
+
+# Restart Waybar
+killall waybar && waybar &
+```
+
+Now clicking the WiFi icon in Waybar will launch Gazelle as a centered, floating 800x600 window on top of all other windows - exactly like Impala worked.
+
+### What This Does
+
+The `floating-window` tag automatically applies these rules (defined in Omarchy's system config):
+- `float` - Window floats instead of tiling
+- `center` - Centered on screen
+- `size 800 600` - Fixed size matching other Omarchy TUIs
+
+### Reverting to nm-applet
+
+If you want to go back to nm-applet, change the waybar network `on-click` to:
+```json
+"on-click": "nm-applet --indicator"
+```
+
 ## Features
 
 - ✅ **Complete 802.1X Support** (PEAP/TTLS/TLS with all phase2 auth methods)
