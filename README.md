@@ -8,8 +8,45 @@ A minimal, keyboard-driven TUI for NetworkManager with **full 802.1X enterprise 
 
 ## Installation
 
+### From AUR (Recommended)
+
 ```bash
-conda activate gazelle
+yay -S gazelle-tui
+# or
+paru -S gazelle-tui
+```
+
+Then just run:
+```bash
+gazelle
+```
+
+#### ⚠️ Note for Omarchy Linux Users
+
+If you get "target not found" errors for `python-textual`, `python-rich`, or `python-platformdirs`, your mirrors may be behind on Python packages. Use this **safe workaround**:
+
+```bash
+# Add official Arch mirrors (temporary)
+sudo sed -i '1iServer = https://geo.mirror.pkgbuild.com/$repo/os/$arch' /etc/pacman.d/mirrorlist
+sudo pacman -Syy
+
+# Now install gazelle
+yay -S gazelle-tui
+```
+
+**Why this is safe:**
+- Omarchy uses official Arch repositories, this just adds the source directly
+- Your Omarchy-specific packages are unaffected
+- Temporary fix until Omarchy mirrors sync (typically 1-7 days)
+- You can optionally remove the added line later with `sudo sed -i '/geo.mirror.pkgbuild.com/d' /etc/pacman.d/mirrorlist`
+
+### Development Setup
+
+For contributing or testing the latest version:
+
+```bash
+git clone https://github.com/Zeus-Deus/gazelle-tui.git
+cd gazelle-tui
 pip install -r requirements.txt
 chmod +x gazelle
 ./gazelle
