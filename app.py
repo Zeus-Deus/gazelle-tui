@@ -10,6 +10,11 @@ import subprocess
 class HiddenNetworkScreen(ModalScreen):
     """Modal for connecting to hidden SSID"""
     
+    BINDINGS = [
+        ("enter", "submit", "Submit"),
+        ("escape", "cancel", "Cancel"),
+    ]
+    
     def compose(self) -> ComposeResult:
         yield Container(
             Static("Connect to Hidden Network", id="title"),
@@ -25,12 +30,29 @@ class HiddenNetworkScreen(ModalScreen):
         if event.button.id == "cancel":
             self.app.pop_screen()
         elif event.button.id == "next":
-            ssid = self.query_one("#ssid", Input).value
-            sec = self.query_one("#sec", Select).value
-            if ssid:
-                self.dismiss((ssid, sec))
+            self._submit()
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in Input field"""
+        self._submit()
+    
+    def _submit(self) -> None:
+        """Submit the form"""
+        ssid = self.query_one("#ssid", Input).value
+        sec = self.query_one("#sec", Select).value
+        if ssid:
+            self.dismiss((ssid, sec))
+    
+    def action_cancel(self) -> None:
+        """Handle Esc key"""
+        self.app.pop_screen()
 
 class PasswordScreen(ModalScreen):
+    BINDINGS = [
+        ("enter", "submit", "Submit"),
+        ("escape", "cancel", "Cancel"),
+    ]
+    
     def __init__(self, ssid, is_enterprise=False, is_hidden=False):
         super().__init__()
         self.ssid, self.is_enterprise, self.is_hidden = ssid, is_enterprise, is_hidden
@@ -61,17 +83,29 @@ class PasswordScreen(ModalScreen):
         if event.button.id == "no":
             self.app.pop_screen()
         elif event.button.id == "ok":
-            if self.is_enterprise:
-                u = self.query_one("#user", Input).value
-                p = self.query_one("#pwd", Input).value
-                eap = self.query_one("#eap", Select).value
-                phase2 = self.query_one("#phase2", Select).value
-                if u and p:
-                    self.dismiss((self.ssid, p, u, True, eap, phase2, self.is_hidden))
-            else:
-                p = self.query_one("#pwd", Input).value
-                if p:
-                    self.dismiss((self.ssid, p, None, False, None, None, self.is_hidden))
+            self._submit()
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in Input fields"""
+        self._submit()
+    
+    def _submit(self) -> None:
+        """Submit the form"""
+        if self.is_enterprise:
+            u = self.query_one("#user", Input).value
+            p = self.query_one("#pwd", Input).value
+            eap = self.query_one("#eap", Select).value
+            phase2 = self.query_one("#phase2", Select).value
+            if u and p:
+                self.dismiss((self.ssid, p, u, True, eap, phase2, self.is_hidden))
+        else:
+            p = self.query_one("#pwd", Input).value
+            if p:
+                self.dismiss((self.ssid, p, None, False, None, None, self.is_hidden))
+    
+    def action_cancel(self) -> None:
+        """Handle Esc key"""
+        self.app.pop_screen()
 
 class Gazelle(App):
     CSS = """
