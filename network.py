@@ -77,6 +77,12 @@ def connect_wifi(ssid, password, hidden=False):
             cmd.append('hidden')
             cmd.append('yes')
         result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # If connection failed, delete the connection profile that was created
+        if result.returncode != 0:
+            subprocess.run(['nmcli', 'connection', 'delete', ssid], 
+                          capture_output=True, text=True)
+        
         return result.returncode == 0, result.stderr or result.stdout
     except Exception as e:
         return False, str(e)
@@ -120,6 +126,12 @@ def connect_802_1x(ssid, username, password, eap_method="peap", phase2_auth="msc
         
         result = subprocess.run(['nmcli', 'connection', 'up', ssid],
                                capture_output=True, text=True)
+        
+        # If connection failed, delete the connection profile that was created
+        if result.returncode != 0:
+            subprocess.run(['nmcli', 'connection', 'delete', ssid], 
+                          capture_output=True, text=True)
+        
         return result.returncode == 0, result.stderr or "Connected"
     except Exception as e:
         return False, str(e)
