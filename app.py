@@ -76,11 +76,16 @@ class PasswordScreen(ModalScreen):
 class Gazelle(App):
     CSS = """
     PasswordScreen, HiddenNetworkScreen { align: center middle; }
-    #dialog { width: 60; border: thick $accent; background: $surface; padding: 1 2; }
+    #dialog { width: 60; height: auto; border: thick $accent; background: $surface; padding: 1 2; }
     #title { text-style: bold; color: $accent; margin-bottom: 1; }
     .section { border: solid $accent; margin: 1 2; padding: 0 1; }
     .section-title { text-style: bold; color: $accent; background: $background; padding: 0 1; }
     #device-section, #station-section { height: 5; }
+    Static { height: auto; }
+    Input { height: 3; margin-bottom: 1; }
+    Select { height: 3; margin-bottom: 1; }
+    Horizontal { height: auto; margin-top: 1; }
+    Button { min-width: 12; }
     """
     
     TITLE = "Gazelle"
