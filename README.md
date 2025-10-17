@@ -126,6 +126,7 @@ If you want to go back to nm-applet, change the waybar network `on-click` to:
 ## Features
 
 - ✅ **Complete 802.1X Support** (PEAP/TTLS/TLS with all phase2 auth methods)
+- ✅ **VPN Connection Management** - Connect/disconnect OpenVPN and WireGuard VPNs
 - ✅ **Hidden SSID Networks** - Connect to networks that don't broadcast
 - ✅ **WPA3-OWE Support** - Enhanced Open (encrypted open networks)
 - ✅ Connect to regular WiFi (WPA/WPA2/WPA3-PSK)
@@ -161,6 +162,7 @@ When connecting to an 802.1X network, simply select your authentication method f
 - `Space` - Connect to selected network
 - `s` - Scan for networks
 - `h` - Connect to hidden network
+- `v` - VPN connections
 - `d` - Disconnect
 - `Ctrl+R` - Toggle WiFi on/off
 - `?` - Show help
@@ -191,6 +193,42 @@ Many corporate/enterprise networks hide their SSID for security.
 ## WPA3-OWE (Enhanced Open)
 
 Gazelle automatically detects and connects to OWE networks (shown as "owe" in Security column). These are encrypted open networks that provide better security than traditional open WiFi. NetworkManager handles the encryption automatically - just connect like any open network.
+
+## VPN Support (Phase 1)
+
+Gazelle now supports managing VPN connections directly from the TUI!
+
+**Phase 1 Features (v1.5+):**
+- List all configured VPN connections
+- Connect/disconnect with keyboard
+- Visual status indicators (🟢 connected, ⚪ disconnected)
+- Press `v` to open VPN screen
+
+### Setting Up VPN Connections
+
+Phase 1 requires pre-configured VPN connections. Here's how to set them up:
+
+**1. Import VPN Config**
+```
+sudo nmcli connection import type openvpn file your-vpn.ovpn
+```
+
+**2. Store Credentials (optional - prevents password prompts)**
+```
+sudo nmcli connection modify <vpn-name> \
+    vpn.user-name "YOUR_USERNAME" \
+    vpn.secrets "password=YOUR_PASSWORD" \
+    +vpn.data "password-flags=0"
+```
+
+**For NordVPN users:** Get service credentials from [nordaccount.com/manual-configuration](https://my.nordaccount.com/dashboard/nordvpn/manual-configuration/service-credentials/) (not your regular login)
+
+**3. Use Gazelle**
+- Press `v` to open VPN screen
+- Use `Enter` or `Space` to connect/disconnect
+- Press `j`/`k` to navigate, `r` to refresh
+
+**Phase 2 Coming:** Import `.ovpn` files directly from Gazelle, edit connections, and more advanced features. See [Issue #3](https://github.com/Zeus-Deus/gazelle-tui/issues/3) for roadmap.
 
 ## NetworkManager Integration
 
