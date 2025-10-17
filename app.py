@@ -47,6 +47,85 @@ class HiddenNetworkScreen(ModalScreen):
         """Handle Esc key"""
         self.app.pop_screen()
 
+class VPNScreen(ModalScreen):
+    """Screen for VPN connection management"""
+    
+    BINDINGS = [
+        ("escape", "cancel", "Back"),
+        Binding("j", "cursor_down", show=False),
+        Binding("k", "cursor_up", show=False),
+        Binding("space", "toggle_vpn", "Connect/Disconnect"),
+        Binding("r", "refresh", "Refresh"),
+        Binding("q", "cancel", "Back"),
+    ]
+    
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static("VPN Connections", classes="section-title"),
+            DataTable(id="vpn-table", cursor_type="row"),
+            classes="section"
+        )
+    
+    def on_mount(self) -> None:
+        """Initialize VPN table"""
+        table = self.query_one("#vpn-table", DataTable)
+        table.add_columns("Status", "Name")
+        self.refresh_vpn_list()
+        table.focus()
+    
+    def refresh_vpn_list(self) -> None:
+        """Refresh VPN connection list"""
+        table = self.query_one("#vpn-table", DataTable)
+        table.clear()
+        for vpn in get_vpn_list():
+            status = "🟢" if vpn['active'] else "⚪"
+            table.add_row(status, vpn['name'])
+    
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection (Enter key)"""
+        self.action_toggle_vpn()
+    
+    def action_toggle_vpn(self) -> None:
+        """Toggle VPN connection on Space/Enter key"""
+        table = self.query_one("#vpn-table", DataTable)
+        if table.cursor_row >= 0 and table.cursor_row < table.row_count:
+            row = table.get_row_at(table.cursor_row)
+            status, name = str(row[0]), str(row[1])
+            
+            if status == "🟢":
+                # Disconnect
+                self.notify("Disconnecting...")
+                success = disconnect_vpn(name)
+                self.notify("✓ Disconnected" if success else "✗ Failed")
+            else:
+                # Connect
+                self.notify("Connecting...")
+                success, msg = connect_vpn(name)
+                self.notify("✓ Connected" if success else "✗ Failed")
+            
+            self.refresh_vpn_list()
+    
+    def action_cursor_down(self) -> None:
+        """Move cursor down"""
+        table = self.query_one("#vpn-table", DataTable)
+        if table.row_count > 0:
+            table.action_cursor_down()
+    
+    def action_cursor_up(self) -> None:
+        """Move cursor up"""
+        table = self.query_one("#vpn-table", DataTable)
+        if table.row_count > 0:
+            table.action_cursor_up()
+    
+    def action_refresh(self) -> None:
+        """Refresh VPN list"""
+        self.refresh_vpn_list()
+        self.notify("Refreshed")
+    
+    def action_cancel(self) -> None:
+        """Return to main screen on Escape"""
+        self.app.pop_screen()
+
 class PasswordScreen(ModalScreen):
     BINDINGS = [
         ("enter", "submit", "Submit"),
@@ -132,6 +211,7 @@ class Gazelle(App):
         Binding("s", "scan", "Scan"),
         Binding("d", "disconnect", "Disconnect"),
         Binding("h", "hidden", "Hidden"),
+        Binding("v", "vpn_screen", "VPN"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
         Binding("?", "help", "Help"),
     ]
@@ -315,5 +395,9 @@ class Gazelle(App):
         self.notify(f"WiFi {'ON' if toggle_wifi() else 'OFF'}")
         self.set_timer(1, self.refresh_all)
     
+    def action_vpn_screen(self) -> None:
+        """Open VPN management screen"""
+        self.push_screen(VPNScreen())
+    
     def action_help(self) -> None:
-        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden d:Disconnect q:Quit", timeout=5)
+        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN d:Disconnect q:Quit", timeout=5)

@@ -169,3 +169,51 @@ def is_enterprise(security):
 def is_owe(security):
     """Check if network uses OWE (Enhanced Open / WPA3-OWE)"""
     return 'OWE' in security or 'WPA3-OWE' in security
+
+def get_vpn_list():
+    """Get all VPN connections configured in NetworkManager"""
+    try:
+        result = subprocess.run(['nmcli', '-t', '-f', 'NAME,TYPE', 'connection', 'show'],
+                               capture_output=True, text=True, check=True)
+        active_vpn = get_active_vpn()
+        vpns = []
+        for line in result.stdout.strip().split('\n'):
+            if ':vpn' in line:
+                name = line.split(':')[0]
+                vpns.append({
+                    'name': name,
+                    'active': name == active_vpn
+                })
+        return sorted(vpns, key=lambda x: (not x['active'], x['name']))
+    except:
+        return []
+
+def get_active_vpn():
+    """Get currently active VPN connection name"""
+    try:
+        result = subprocess.run(['nmcli', '-t', '-f', 'NAME,TYPE', 'connection', 'show', '--active'],
+                               capture_output=True, text=True, check=True)
+        for line in result.stdout.strip().split('\n'):
+            if ':vpn' in line:
+                return line.split(':')[0]
+        return None
+    except:
+        return None
+
+def connect_vpn(name):
+    """Connect to VPN by name"""
+    try:
+        result = subprocess.run(['nmcli', 'connection', 'up', name],
+                               capture_output=True, text=True)
+        return result.returncode == 0, result.stderr or result.stdout
+    except Exception as e:
+        return False, str(e)
+
+def disconnect_vpn(name):
+    """Disconnect VPN by name"""
+    try:
+        result = subprocess.run(['nmcli', 'connection', 'down', name],
+                               capture_output=True, text=True)
+        return result.returncode == 0
+    except:
+        return False
