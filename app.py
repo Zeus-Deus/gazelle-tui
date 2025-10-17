@@ -6,6 +6,7 @@ from textual.screen import ModalScreen
 from textual.binding import Binding
 from network import *
 import subprocess
+import asyncio
 
 class HiddenNetworkScreen(ModalScreen):
     """Modal for connecting to hidden SSID"""
@@ -237,8 +238,25 @@ class Gazelle(App):
         self.query_one("#sta").cursor_type = "none"
         self.query_one("#known").add_columns("Name", "Security", "Signal")
         self.query_one("#new").add_columns("Name", "Security", "Signal")
-        self.refresh_all()
+        
+        # Show placeholder while scanning
+        new_table = self.query_one("#new")
+        new_table.add_row("Scanning for networks...", "", "")
+        
+        # Trigger async network scan
+        self.run_worker(self.scan_networks_async, exclusive=True)
+        
         self.query_one("#new").focus()
+    
+    async def scan_networks_async(self) -> None:
+        """Async WiFi network scanning in background"""
+        try:
+            # Run blocking get_wifi_list() in background thread
+            await asyncio.to_thread(get_wifi_list)
+            # Update UI with results
+            self.refresh_all()
+        except Exception as e:
+            self.notify(f"Scan failed: {str(e)}")
     
     def refresh_all(self) -> None:
         # Device
@@ -331,7 +349,7 @@ class Gazelle(App):
     def action_scan(self) -> None:
         self.notify("Scanning...")
         subprocess.run(['nmcli', 'device', 'wifi', 'rescan'], capture_output=True)
-        self.set_timer(2, self.refresh_all)
+        self.run_worker(self.scan_networks_async, exclusive=True)
     
     def action_select(self) -> None:
         t = self._get_focused_table()
