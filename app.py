@@ -7,6 +7,8 @@ from textual.binding import Binding
 from network import *
 import subprocess
 import asyncio
+import json
+from pathlib import Path
 
 class HiddenNetworkScreen(ModalScreen):
     """Modal for connecting to hidden SSID"""
@@ -203,6 +205,8 @@ class Gazelle(App):
     """
     
     TITLE = "Gazelle"
+    CONFIG_DIR = Path.home() / ".config" / "gazelle"
+    CONFIG_FILE = CONFIG_DIR / "config.json"
     BINDINGS = [
         Binding("q", "quit", "Quit"),
         Binding("j", "cursor_down", show=False),
@@ -232,6 +236,16 @@ class Gazelle(App):
         yield Footer()
     
     def on_mount(self) -> None:
+        # Load and apply saved theme
+        config = self.load_config()
+        saved_theme = config.get("theme")
+        if saved_theme:
+            try:
+                self.theme = saved_theme
+                self.log.info(f"Loaded theme: {saved_theme}")
+            except Exception as e:
+                self.log.warning(f"Failed to load theme '{saved_theme}': {e}")
+        
         self.query_one("#dev").add_columns("Name", "Mode", "Powered", "Address")
         self.query_one("#dev").cursor_type = "none"
         self.query_one("#sta").add_columns("State", "Scanning", "Frequency", "Security")
@@ -247,6 +261,49 @@ class Gazelle(App):
         self.run_worker(self.scan_networks_async, exclusive=True)
         
         self.query_one("#new").focus()
+    
+    def load_config(self) -> dict:
+        """Load configuration from ~/.config/gazelle/config.json
+        
+        Returns:
+            dict: Configuration dictionary, or empty dict if file doesn't exist
+        """
+        try:
+            if self.CONFIG_FILE.exists():
+                return json.loads(self.CONFIG_FILE.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            # If config is corrupted, log error and return empty dict
+            self.log.error(f"Failed to load config: {e}")
+        return {}
+    
+    def save_config(self, data: dict) -> None:
+        """Save configuration to ~/.config/gazelle/config.json
+        
+        Args:
+            data: Dictionary to save as JSON
+        """
+        try:
+            # Create config directory if it doesn't exist
+            self.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            
+            # Write config file with pretty formatting
+            self.CONFIG_FILE.write_text(json.dumps(data, indent=2))
+        except OSError as e:
+            self.log.error(f"Failed to save config: {e}")
+    
+    def watch_theme(self, new_theme: str) -> None:
+        """Automatically called by Textual when self.theme changes.
+        
+        Saves the new theme to config file for persistence.
+        
+        Args:
+            new_theme: The new theme name that was just set
+        """
+        # Load existing config, update theme, save back
+        config = self.load_config()
+        config["theme"] = new_theme
+        self.save_config(config)
+        self.log.info(f"Theme changed to: {new_theme}")
     
     async def scan_networks_async(self) -> None:
         """Async WiFi network scanning in background"""
