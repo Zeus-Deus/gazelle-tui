@@ -127,6 +127,7 @@ If you want to go back to nm-applet, change the waybar network `on-click` to:
 
 - ✅ **Complete 802.1X Support** (PEAP/TTLS/TLS with all phase2 auth methods)
 - ✅ **VPN Connection Management** - Connect/disconnect OpenVPN and WireGuard VPNs
+- ✅ **Theme Persistence** - Your theme choice is saved and restored between sessions
 - ✅ **Hidden SSID Networks** - Connect to networks that don't broadcast
 - ✅ **WPA3-OWE Support** - Enhanced Open (encrypted open networks)
 - ✅ Connect to regular WiFi (WPA/WPA2/WPA3-PSK)
@@ -165,8 +166,32 @@ When connecting to an 802.1X network, simply select your authentication method f
 - `v` - VPN connections
 - `d` - Disconnect
 - `Ctrl+R` - Toggle WiFi on/off
+- `Ctrl+P` - Command palette (themes, etc.)
 - `?` - Show help
 - `q` - Quit
+
+## Theme Customization
+
+Gazelle supports all built-in Textual themes with automatic persistence.
+
+**Changing Theme:**
+1. Press `Ctrl+P` to open the command palette
+2. Type "theme" and select from available themes
+3. Your selection is automatically saved to `~/.config/gazelle/config.json`
+4. Theme persists across app restarts
+
+**Available Themes:**
+- textual-dark (default)
+- textual-light
+- nord
+- dracula
+- monokai
+- gruvbox
+- catppuccin
+- tokyo-night
+- ...and many more!
+
+**Config File Location:** `~/.config/gazelle/config.json`
 
 ## Connecting to eduroam
 
