@@ -253,6 +253,41 @@ sudo nmcli connection modify <vpn-name> \
 - Use `Enter` or `Space` to connect/disconnect
 - Press `j`/`k` to navigate, `r` to refresh
 
+### WireGuard VPN Setup
+
+**1. Import WireGuard Configuration**
+
+The `.conf` file must have a valid interface name (e.g., `wg0.conf`):
+```bash
+sudo nmcli connection import type wireguard file /path/to/wg0.conf
+```
+
+**2. Disable Auto-Connect (optional)**
+
+By default, WireGuard connections auto-connect at boot. To disable:
+```bash
+nmcli connection modify wg0 autoconnect no
+```
+
+**3. Manual Connection Control**
+
+Connect:
+```bash
+nmcli connection up wg0
+```
+
+Disconnect:
+```bash
+nmcli connection down wg0
+```
+
+**4. Use Gazelle**
+
+Once imported, your WireGuard connection appears in Gazelle's VPN screen:
+- Press `v` to open VPN screen
+- Select your WireGuard connection
+- Use `Enter` or `Space` to connect/disconnect
+
 **Phase 2 Coming:** Import `.ovpn` files directly from Gazelle, edit connections, and more advanced features. See [Issue #3](https://github.com/Zeus-Deus/gazelle-tui/issues/3) for roadmap.
 
 ## NetworkManager Integration
