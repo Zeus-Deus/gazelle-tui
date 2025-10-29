@@ -1,5 +1,8 @@
 """Gazelle - Minimal NetworkManager TUI"""
+import os
+os.environ["RICH_COLOR_SYSTEM"] = "standard"
 from textual.app import App, ComposeResult
+from textual.theme import Theme
 from textual.widgets import Header, Footer, Static, Input, Button, DataTable, Select
 from textual.containers import Container, Horizontal, ScrollableContainer
 from textual.screen import ModalScreen
@@ -9,6 +12,13 @@ import subprocess
 import asyncio
 import json
 from pathlib import Path
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    try:
+        import tomli as tomllib  # Fallback for older Python
+    except ImportError:
+        tomllib = None  # Will use fallback colors
 
 class HiddenNetworkScreen(ModalScreen):
     """Modal for connecting to hidden SSID"""
@@ -189,10 +199,43 @@ class PasswordScreen(ModalScreen):
         """Handle Esc key"""
         self.app.pop_screen()
 
+def load_omarchy_colors():
+    """
+    Load colors from Omarchy's active theme.
+    Returns dict with RGB color values, or None if not found.
+    """
+    if tomllib is None:
+        return None
+    
+    theme_file = Path.home() / ".config/omarchy/current/theme/alacritty.toml"
+    
+    if not theme_file.exists():
+        return None
+    
+    try:
+        with open(theme_file, "rb") as f:
+            data = tomllib.load(f)
+        
+        colors = data.get("colors", {})
+        normal = colors.get("normal", {})
+        bright = colors.get("bright", {})
+        primary = colors.get("primary", {})
+        
+        return {
+            "accent": normal.get("yellow") or bright.get("yellow") or "#EBCB8B",
+            "primary": normal.get("red") or bright.get("red") or "#BF616A",
+            "foreground": primary.get("foreground") or "#D8DEE9",
+            "background": primary.get("background") or "#2E3440",
+        }
+    except Exception:
+        # If parsing fails, return None to use fallback
+        return None
+
 class Gazelle(App):
+    ansi_color = True  # Enable terminal ANSI color support
     CSS = """
     PasswordScreen, HiddenNetworkScreen { align: center middle; }
-    #dialog { width: 60; height: auto; border: thick $accent; background: $surface; padding: 1 2; }
+    #dialog { width: 60; height: auto; border: thick $accent; background: $background; padding: 1 2; }
     #title { text-style: bold; color: $accent; margin-bottom: 1; }
     .section { border: solid $accent; margin: 1 2; padding: 0 1; }
     .section-title { text-style: bold; color: $accent; background: $background; padding: 0 1; }
@@ -202,6 +245,16 @@ class Gazelle(App):
     Select { height: 3; margin-bottom: 1; }
     Horizontal { height: auto; margin-top: 1; }
     Button { min-width: 12; }
+
+    /* DataTable selection/cursor colors */
+    DataTable > .datatable--cursor {
+        background: $accent 30%;
+        color: $foreground;
+    }
+
+    DataTable > .datatable--hover {
+        background: $accent 20%;
+    }
     """
     
     TITLE = "Gazelle"
@@ -236,15 +289,49 @@ class Gazelle(App):
         yield Footer()
     
     def on_mount(self) -> None:
-        # Load and apply saved theme
+        # Try to load Omarchy colors
+        omarchy_colors = load_omarchy_colors()
+        
+        if omarchy_colors:
+            # Register Omarchy-specific theme with exact RGB values
+            self.register_theme(
+                Theme(
+                    name="omarchy-auto",
+                    primary=omarchy_colors["primary"],
+                    secondary=omarchy_colors["accent"],
+                    accent=omarchy_colors["accent"],
+                    foreground=omarchy_colors["foreground"],
+                    background=omarchy_colors["background"],
+                    surface=omarchy_colors["background"],
+                    panel=omarchy_colors["background"],
+                    dark=True,
+                )
+            )
+            default_theme = "omarchy-auto"
+        else:
+            # Fallback: Use ANSI colors for non-Omarchy users
+            self.register_theme(
+                Theme(
+                    name="auto",
+                    primary="ansi_yellow",
+                    secondary="ansi_cyan",
+                    accent="ansi_yellow",
+                    foreground="ansi_white",
+                    background="ansi_black",
+                    surface="ansi_black",
+                    panel="ansi_black",
+                    dark=True,
+                )
+            )
+            default_theme = "auto"
+
+        # Load saved theme or use default
         config = self.load_config()
-        saved_theme = config.get("theme")
-        if saved_theme:
-            try:
-                self.theme = saved_theme
-                self.log.info(f"Loaded theme: {saved_theme}")
-            except Exception as e:
-                self.log.warning(f"Failed to load theme '{saved_theme}': {e}")
+        saved_theme = config.get("theme", default_theme)
+        try:
+            self.theme = saved_theme
+        except Exception:
+            self.theme = default_theme
         
         self.query_one("#dev").add_columns("Name", "Mode", "Powered", "Address")
         self.query_one("#dev").cursor_type = "none"
@@ -274,7 +361,7 @@ class Gazelle(App):
         except (json.JSONDecodeError, OSError) as e:
             # If config is corrupted, log error and return empty dict
             self.log.error(f"Failed to load config: {e}")
-        return {}
+        return {"theme": "auto"}  # Default new installations to auto theme
     
     def save_config(self, data: dict) -> None:
         """Save configuration to ~/.config/gazelle/config.json

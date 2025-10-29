@@ -128,6 +128,7 @@ If you want to go back to nm-applet, change the waybar network `on-click` to:
 - ✅ **Complete 802.1X Support** (PEAP/TTLS/TLS with all phase2 auth methods)
 - ✅ **VPN Connection Management** - Connect/disconnect OpenVPN and WireGuard VPNs
 - ✅ **Theme Persistence** - Your theme choice is saved and restored between sessions
+- ✅ **Automatic Omarchy theme integration**
 - ✅ **Hidden SSID Networks** - Connect to networks that don't broadcast
 - ✅ **WPA3-OWE Support** - Enhanced Open (encrypted open networks)
 - ✅ Connect to regular WiFi (WPA/WPA2/WPA3-PSK)
@@ -169,6 +170,34 @@ When connecting to an 802.1X network, simply select your authentication method f
 - `Ctrl+P` - Command palette (themes, etc.)
 - `?` - Show help
 - `q` - Quit
+
+## Themes
+
+### Automatic Theme Matching (Omarchy)
+
+Gazelle automatically detects and matches your Omarchy theme colors! 
+
+**How it works:**
+- Omarchy users: Gazelle reads `~/.config/omarchy/current/theme/alacritty.toml` and uses your exact theme colors
+- Theme changes: Just restart Gazelle after changing Omarchy themes
+- No configuration needed!
+
+**Supported:**
+- All Omarchy themes (nord, mars, gruvbox, catppuccin, tokyo-night, etc.)
+- Colors update automatically when you switch themes
+
+### Non-Omarchy Users
+
+If Omarchy is not detected, Gazelle uses standard ANSI terminal colors that work with any color scheme.
+
+### Manual Theme Override
+
+To use a specific theme regardless of Omarchy:
+1. Press `Ctrl+P` (command palette)
+2. Search for "theme"
+3. Select your preferred theme
+
+Note: Manual theme selection is saved and persists across restarts.
 
 ## Theme Customization
 
