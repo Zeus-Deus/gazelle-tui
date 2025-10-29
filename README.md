@@ -2,7 +2,7 @@
 
 A minimal NetworkManager TUI for Linux with **complete 802.1X enterprise WiFi support**.
 
-![Gazelle Screenshot](screenshots/Gazelle-home-new-edited.jpg)
+![Gazelle Screenshot](screenshots/gazelle-dynamic_theme.jpg)
 
 ## Why Gazelle?
 
