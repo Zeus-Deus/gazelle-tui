@@ -68,41 +68,20 @@ sudo pacman -Syy
 # Install from AUR
 yay -S gazelle-tui
 ```
-
-### Step 2: Configure Hyprland Window Rules
-
-Create a window rules configuration file:
-
-```bash
-cat > ~/.config/hypr/windows.conf << 'EOF'
-# Gazelle WiFi TUI - floating window like Impala
-windowrule = tag +floating-window, class:(Gazelle)
-EOF
-```
-
-Add the source line to your Hyprland config:
-
-```bash
-echo "source = ~/.config/hypr/windows.conf" >> ~/.config/hypr/hyprland.conf
-```
-
-### Step 3: Update Waybar Network Module
+### Step 2: Update Waybar Network Module
 
 Edit `~/.config/waybar/config.jsonc` and change the network module's `on-click`:
 
 ```json
 "network": {
     ...
-    "on-click": "$TERMINAL --class=Gazelle -e gazelle"
+    "on-click": "$TERMINAL --class=TUI.float -e gazelle"
 }
 ```
 
-### Step 4: Apply Changes
+### Step 3: Apply Changes
 
 ```bash
-# Reload Hyprland configuration
-hyprctl reload
-
 # Restart Waybar
 killall waybar && waybar &
 ```
