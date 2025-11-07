@@ -42,6 +42,78 @@ yay -S gazelle-tui
 - Temporary fix until Omarchy mirrors sync (typically 1-7 days)
 - You can optionally remove the added line later with `sudo sed -i '/geo.mirror.pkgbuild.com/d' /etc/pacman.d/mirrorlist`
 
+### On Nix
+
+#### **1. Using Home Manager (recommended)**
+
+Add the Gazelle flake to your user flake:
+
+```nix
+inputs.gazelle.url = "github:Zeus-Deus/gazelle-tui";
+```
+
+Then enable it in your `homeConfigurations`:
+
+```nix
+modules = [
+  gazelle.homeModules.gazelle
+];
+```
+
+Don't forget to add the package as well:
+```nix
+    home.packages =  [
+      inputs.gazelle.packages.${pkgs.system}.default
+    ];
+```
+
+You can use Home Manager to declaratively configure Gazelle:
+
+```nix
+programs.gazelle = {
+  enable = true;
+  settings = {
+    theme = "nord"; # choose your theme
+  };
+```
+
+Home Manager will automatically generate:
+
+```
+~/.config/gazelle/config.json
+```
+
+with your chosen settings.
+
+Apply the configuration:
+
+```bash
+home-manager switch
+```
+or rebuild your flake
+```bash
+nixos-rebuild switch --flake .#myFlake
+```
+
+---
+
+#### **2. Running the App Manually**
+
+Build and run with Nix:
+
+```bash
+nix build github:Zeus-Deus/gazelle-tui
+./result/bin/gazelle
+```
+
+Or run directly with `nix run`:
+
+```bash
+nix run github:Zeus-Deus/gazelle-tui
+```
+
+---
+
 ### Development Setup
 
 For contributing or testing the latest version:
