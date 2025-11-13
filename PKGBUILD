@@ -12,7 +12,7 @@ optdepends=(
     'modemmanager: WWAN/cellular modem support'
 )
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Zeus-Deus/gazelle-tui/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('89ee2f37d89e711dc65726056e7c8f6ffccec555c46bdd78374fb3d14ee61600')
 
 package() {
     cd "$srcdir/$pkgname-$pkgver"
