@@ -62,7 +62,7 @@ class HiddenNetworkScreen(ModalScreen):
 
 class VPNScreen(ModalScreen):
     """Screen for VPN connection management"""
-    
+
     BINDINGS = [
         ("escape", "cancel", "Back"),
         Binding("j", "cursor_down", show=False),
@@ -71,21 +71,21 @@ class VPNScreen(ModalScreen):
         Binding("r", "refresh", "Refresh"),
         Binding("q", "cancel", "Back"),
     ]
-    
+
     def compose(self) -> ComposeResult:
         yield Container(
             Static("VPN Connections", classes="section-title"),
             DataTable(id="vpn-table", cursor_type="row"),
             classes="section"
         )
-    
+
     def on_mount(self) -> None:
         """Initialize VPN table"""
         table = self.query_one("#vpn-table", DataTable)
         table.add_columns("Status", "Name")
         self.refresh_vpn_list()
         table.focus()
-    
+
     def refresh_vpn_list(self) -> None:
         """Refresh VPN connection list"""
         table = self.query_one("#vpn-table", DataTable)
@@ -93,18 +93,18 @@ class VPNScreen(ModalScreen):
         for vpn in get_vpn_list():
             status = "🟢" if vpn['active'] else "⚪"
             table.add_row(status, vpn['name'])
-    
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection (Enter key)"""
         self.action_toggle_vpn()
-    
+
     def action_toggle_vpn(self) -> None:
         """Toggle VPN connection on Space/Enter key"""
         table = self.query_one("#vpn-table", DataTable)
         if table.cursor_row >= 0 and table.cursor_row < table.row_count:
             row = table.get_row_at(table.cursor_row)
             status, name = str(row[0]), str(row[1])
-            
+
             if status == "🟢":
                 # Disconnect
                 self.notify("Disconnecting...")
@@ -115,26 +115,120 @@ class VPNScreen(ModalScreen):
                 self.notify("Connecting...")
                 success, msg = connect_vpn(name)
                 self.notify("✓ Connected" if success else "✗ Failed")
-            
+
             self.refresh_vpn_list()
-    
+
     def action_cursor_down(self) -> None:
         """Move cursor down"""
         table = self.query_one("#vpn-table", DataTable)
         if table.row_count > 0:
             table.action_cursor_down()
-    
+
     def action_cursor_up(self) -> None:
         """Move cursor up"""
         table = self.query_one("#vpn-table", DataTable)
         if table.row_count > 0:
             table.action_cursor_up()
-    
+
     def action_refresh(self) -> None:
         """Refresh VPN list"""
         self.refresh_vpn_list()
         self.notify("Refreshed")
-    
+
+    def action_cancel(self) -> None:
+        """Return to main screen on Escape"""
+        self.app.pop_screen()
+
+class WWANScreen(ModalScreen):
+    """Screen for WWAN (cellular) connection management"""
+
+    BINDINGS = [
+        ("escape", "cancel", "Back"),
+        Binding("j", "cursor_down", show=False),
+        Binding("k", "cursor_up", show=False),
+        Binding("space", "toggle_wwan", "Connect/Disconnect"),
+        Binding("r", "refresh", "Refresh"),
+        Binding("q", "cancel", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static("WWAN Connections", classes="section-title"),
+            DataTable(id="wwan-table", cursor_type="row"),
+            classes="section"
+        )
+
+    def on_mount(self) -> None:
+        """Initialize WWAN table"""
+        table = self.query_one("#wwan-table", DataTable)
+        table.add_columns("Status", "Name", "Signal", "Operator", "Tech")
+        self.refresh_wwan_list()
+        table.focus()
+
+    def refresh_wwan_list(self) -> None:
+        """Refresh WWAN connection list"""
+        table = self.query_one("#wwan-table", DataTable)
+        table.clear()
+        wwans = get_wwan_list()
+
+        if not wwans:
+            table.add_row("⚪", "No WWAN connections found", "-", "-", "-")
+        else:
+            for wwan in wwans:
+                status = "🟢" if wwan['active'] else "⚪"
+                table.add_row(
+                    status,
+                    wwan['name'],
+                    wwan.get('signal', '-'),
+                    wwan.get('operator', '-'),
+                    wwan.get('tech', '-')
+                )
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection (Enter key)"""
+        self.action_toggle_wwan()
+
+    def action_toggle_wwan(self) -> None:
+        """Toggle WWAN connection on Space/Enter key"""
+        table = self.query_one("#wwan-table", DataTable)
+        if table.cursor_row >= 0 and table.cursor_row < table.row_count:
+            row = table.get_row_at(table.cursor_row)
+            status, name = str(row[0]), str(row[1])
+
+            # Don't try to connect if no connections found
+            if name == "No WWAN connections found":
+                return
+
+            if status == "🟢":
+                # Disconnect
+                self.notify("Disconnecting...")
+                success = disconnect_wwan(name)
+                self.notify("✓ Disconnected" if success else "✗ Failed")
+            else:
+                # Connect
+                self.notify("Connecting...")
+                success, msg = connect_wwan(name)
+                self.notify("✓ Connected" if success else "✗ Failed")
+
+            self.refresh_wwan_list()
+
+    def action_cursor_down(self) -> None:
+        """Move cursor down"""
+        table = self.query_one("#wwan-table", DataTable)
+        if table.row_count > 0:
+            table.action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        """Move cursor up"""
+        table = self.query_one("#wwan-table", DataTable)
+        if table.row_count > 0:
+            table.action_cursor_up()
+
+    def action_refresh(self) -> None:
+        """Refresh WWAN list"""
+        self.refresh_wwan_list()
+        self.notify("Refreshed")
+
     def action_cancel(self) -> None:
         """Return to main screen on Escape"""
         self.app.pop_screen()
@@ -270,6 +364,7 @@ class Gazelle(App):
         Binding("d", "disconnect", "Disconnect"),
         Binding("h", "hidden", "Hidden"),
         Binding("v", "vpn_screen", "VPN"),
+        Binding("w", "wwan_screen", "WWAN"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
         Binding("?", "help", "Help"),
     ]
@@ -560,6 +655,10 @@ class Gazelle(App):
     def action_vpn_screen(self) -> None:
         """Open VPN management screen"""
         self.push_screen(VPNScreen())
-    
+
+    def action_wwan_screen(self) -> None:
+        """Open WWAN management screen"""
+        self.push_screen(WWANScreen())
+
     def action_help(self) -> None:
-        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN d:Disconnect q:Quit", timeout=5)
+        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN w:WWAN d:Disconnect q:Quit", timeout=5)

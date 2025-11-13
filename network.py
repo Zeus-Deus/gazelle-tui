@@ -226,3 +226,110 @@ def disconnect_vpn(name):
         return result.returncode == 0
     except:
         return False
+
+def get_modem_info():
+    """Get modem information via ModemManager"""
+    try:
+        # Get modem list
+        result = subprocess.run(['mmcli', '--list-modems'],
+                               capture_output=True, text=True, check=True)
+
+        # Extract modem ID from output (e.g., "/org/freedesktop/ModemManager1/Modem/2")
+        modem_id = None
+        for line in result.stdout.strip().split('\n'):
+            if '/Modem/' in line:
+                modem_id = line.split('/Modem/')[-1].split()[0]
+                break
+
+        if not modem_id:
+            return None
+
+        # Get detailed modem info
+        result = subprocess.run(['mmcli', '-m', modem_id],
+                               capture_output=True, text=True, check=True)
+
+        info = {'signal': '0%', 'operator': '-', 'tech': '-', 'state': 'unknown'}
+
+        for line in result.stdout.split('\n'):
+            line = line.strip()
+            if 'signal quality:' in line:
+                # Extract percentage (e.g., "48% (cached)")
+                info['signal'] = line.split(':')[1].strip().split()[0]
+            elif 'operator name:' in line:
+                info['operator'] = line.split(':')[1].strip()
+            elif 'access tech:' in line:
+                info['tech'] = line.split(':')[1].strip().upper()
+            elif 'state:' in line:
+                # Extract state, removing ANSI color codes
+                state = line.split(':')[1].strip()
+                # Remove ANSI codes like [32mconnected[0m
+                state = state.replace('[32m', '').replace('[0m', '')
+                info['state'] = state
+
+        return info
+    except:
+        return None
+
+def get_wwan_list():
+    """Get all WWAN (cellular) connections configured in NetworkManager"""
+    try:
+        result = subprocess.run(['nmcli', '-t', '-f', 'NAME,TYPE', 'connection', 'show'],
+                               capture_output=True, text=True, check=True)
+        active_wwan = get_active_wwan()
+        modem_info = get_modem_info()
+
+        wwans = []
+        for line in result.stdout.strip().split('\n'):
+            if ':gsm' in line:
+                name = line.split(':')[0]
+                wwan_entry = {
+                    'name': name,
+                    'active': name == active_wwan
+                }
+
+                # Add modem info if connection is active
+                if wwan_entry['active'] and modem_info:
+                    wwan_entry['signal'] = modem_info['signal']
+                    wwan_entry['operator'] = modem_info['operator']
+                    wwan_entry['tech'] = modem_info['tech']
+                else:
+                    wwan_entry['signal'] = '-'
+                    wwan_entry['operator'] = '-'
+                    wwan_entry['tech'] = '-'
+
+                wwans.append(wwan_entry)
+
+        return sorted(wwans, key=lambda x: (not x['active'], x['name']))
+    except:
+        return []
+
+def get_active_wwan():
+    """Get currently active WWAN connection name"""
+    try:
+        result = subprocess.run(['nmcli', '-t', '-f', 'NAME,TYPE', 'connection', 'show', '--active'],
+                               capture_output=True, text=True, check=True)
+
+        for line in result.stdout.strip().split('\n'):
+            if ':gsm' in line:
+                return line.split(':')[0]
+        return None
+    except:
+        return None
+
+def connect_wwan(name):
+    """Connect to WWAN by name"""
+    try:
+        result = subprocess.run(['nmcli', 'connection', 'up', name],
+                               capture_output=True, text=True)
+        return result.returncode == 0, result.stderr or result.stdout
+    except Exception as e:
+        return False, str(e)
+
+def disconnect_wwan(name):
+    """Disconnect WWAN by name"""
+    try:
+        result = subprocess.run(['nmcli', 'connection', 'down', name],
+                               capture_output=True, text=True)
+        return result.returncode == 0
+    except:
+        return False
