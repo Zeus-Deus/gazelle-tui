@@ -259,6 +259,7 @@ If you want to go back to nm-applet, change the waybar network `on-click` to:
 
 ## Features
 
+- ✅ **WWAN/Cellular Support** - Manage 4G/5G modem connections with live signal monitoring
 - ✅ **Complete 802.1X Support** (PEAP/TTLS/TLS with all phase2 auth methods)
 - ✅ **VPN Connection Management** - Connect/disconnect OpenVPN and WireGuard VPNs
 - ✅ **Theme Persistence** - Your theme choice is saved and restored between sessions
@@ -301,6 +302,7 @@ When connecting to an 802.1X network, simply select your authentication method f
 - `s` - Scan for networks
 - `h` - Connect to hidden network
 - `v` - VPN connections
+- `w` - WWAN/Cellular connections
 - `d` - Disconnect
 - `Ctrl+R` - Toggle WiFi on/off
 - `Ctrl+P` - Command palette (themes, etc.)
@@ -469,6 +471,94 @@ Once imported, your WireGuard connection appears in Gazelle's VPN screen:
 
 **Phase 2 Coming:** Import `.ovpn` files directly from Gazelle, edit connections, and more advanced features. See [Issue #3](https://github.com/Zeus-Deus/gazelle-tui/issues/3) for roadmap.
 
+## WWAN/Cellular Support
+
+Gazelle now supports managing cellular (4G/5G) modem connections!
+
+**Features:**
+- List all configured GSM connections
+- Connect/disconnect with keyboard
+- Live signal strength monitoring
+- Operator and technology display (LTE, 5G, etc.)
+- Visual status indicators (🟢 connected, ⚪ disconnected)
+- Press `w` to open WWAN screen
+
+### Hardware Compatibility
+
+Gazelle's WWAN support works with **any cellular modem supported by ModemManager**, including:
+
+- ✅ **Qualcomm modems** (QMI protocol) - Sierra Wireless, Quectel, etc.
+- ✅ **MediaTek modems** (MBIM protocol) - T700, T750, T770, etc.
+- ✅ **Intel modems** (MBIM) - XMM series
+- ✅ **Huawei modems** (AT commands, QMI)
+- ✅ **Ericsson/Telit modems**
+- ✅ Any modem with QMI, MBIM, or AT command support
+
+**Protocol agnostic**: Gazelle uses ModemManager's abstraction layer, so it works with all supported protocols automatically.
+
+### Requirements
+
+**Software dependencies:**
+- ModemManager (provides `mmcli` command)
+- NetworkManager (provides `nmcli` command)
+
+**Hardware requirements:**
+- Compatible cellular modem (USB, M.2, or PCIe)
+- Linux kernel with appropriate WWAN drivers
+- Active SIM card with data plan
+
+**Compatible distributions:**
+- Arch Linux (tested)
+- Ubuntu/Debian
+- Fedora/RHEL
+- openSUSE
+- Any systemd-based Linux distribution
+
+### Setting Up WWAN Connections
+
+WWAN connections are typically auto-configured by ModemManager, but you can also create them manually:
+
+**1. Check if modem is detected:**
+```bash
+mmcli -L  # List modems
+mmcli -m 0  # Show modem details
+```
+
+**2. Create GSM connection (if not auto-created):**
+```bash
+nmcli connection add type gsm ifname "*" con-name "My Carrier" apn "internet"
+```
+
+Replace `"internet"` with your carrier's APN (e.g., `"fast.t-mobile.com"` for T-Mobile US).
+
+**3. Use Gazelle:**
+- Press `w` to open WWAN screen
+- Select your connection
+- Use `Space` to connect/disconnect
+- Press `r` to refresh status
+- Navigate with `j`/`k`
+
+### Troubleshooting
+
+**No modems detected:**
+```bash
+# Check if ModemManager sees your modem
+mmcli -L
+
+# Check if kernel driver loaded
+lsusb | grep -i modem  # For USB modems
+```
+
+**Connection fails:**
+- Verify APN settings for your carrier
+- Check SIM card is inserted and unlocked
+- Ensure you're in an area with cellular coverage
+
+**No ModemManager service:**
+```bash
+sudo systemctl enable --now ModemManager
+```
+
 ## NetworkManager Integration
 
 Gazelle uses real NetworkManager commands (`nmcli`) - the same backend as:
@@ -481,9 +571,15 @@ All connections are stored in `/etc/NetworkManager/` and persist across reboots.
 
 ## Requirements
 
+**Core dependencies:**
 - Linux with NetworkManager
 - Python 3.8+
 - textual>=0.47.0
+
+**Optional (for specific features):**
+- ModemManager - Required for WWAN/cellular support
+- networkmanager-openvpn - Required for OpenVPN support
+- wireguard-tools - Required for WireGuard support
 
 ## License
 
