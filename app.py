@@ -20,6 +20,19 @@ except ImportError:
     except ImportError:
         tomllib = None  # Will use fallback colors
 
+def normalize_color_format(color):
+    """Convert 0xRRGGBB to #RRGGBB for CSS/Textual compatibility.
+    
+    Args:
+        color: Color string in any format
+    
+    Returns:
+        Color string in CSS format (#RRGGBB)
+    """
+    if isinstance(color, str) and color.startswith('0x'):
+        return '#' + color[2:]
+    return color
+
 class HiddenNetworkScreen(ModalScreen):
     """Modal for connecting to hidden SSID"""
     
@@ -222,10 +235,10 @@ def load_omarchy_colors():
         primary = colors.get("primary", {})
         
         return {
-            "accent": normal.get("yellow") or bright.get("yellow") or "#EBCB8B",
-            "primary": normal.get("red") or bright.get("red") or "#BF616A",
-            "foreground": primary.get("foreground") or "#D8DEE9",
-            "background": primary.get("background") or "#2E3440",
+            "accent": normalize_color_format(normal.get("yellow") or bright.get("yellow") or "#EBCB8B"),
+            "primary": normalize_color_format(normal.get("red") or bright.get("red") or "#BF616A"),
+            "foreground": normalize_color_format(primary.get("foreground") or "#D8DEE9"),
+            "background": normalize_color_format(primary.get("background") or "#2E3440"),
         }
     except Exception:
         # If parsing fails, return None to use fallback
