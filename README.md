@@ -18,6 +18,16 @@ yay -S gazelle-tui
 paru -S gazelle-tui
 ```
 
+### From GURU (Gentoo)
+
+[Documentation on GURU](https://wiki.gentoo.org/wiki/Project:GURU/Information_for_End_Users)
+```bash
+$ # If you don't have GURU enabled already, you need to add it to your system.
+$ sudo eselect repository enable guru
+
+$ sudo emerge --ask net-misc/gazelle-tui::guru
+```
+
 Then just run:
 
 ```bash
