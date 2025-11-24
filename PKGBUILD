@@ -6,7 +6,7 @@ pkgdesc="Minimal NetworkManager TUI with complete 802.1X enterprise WiFi and WWA
 arch=('any')
 url="https://github.com/Zeus-Deus/gazelle-tui"
 license=('MIT')
-depends=('python' 'python-textual' 'networkmanager' 'networkmanager-openvpn' 'wireguard-tools')
+depends=('python' 'python-textual' 'python-dbus' 'networkmanager' 'networkmanager-openvpn' 'wireguard-tools')
 optdepends=(
     'python-tomli: Omarchy theme detection for Python < 3.11'
     'modemmanager: WWAN/cellular modem support'

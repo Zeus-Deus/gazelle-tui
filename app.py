@@ -379,6 +379,7 @@ class Gazelle(App):
         Binding("v", "vpn_screen", "VPN"),
         Binding("w", "wwan_screen", "WWAN"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
+        Binding("ctrl+b", "toggle_wwan_radio", "WWAN Radio"),
         Binding("?", "help", "Help"),
     ]
     
@@ -522,6 +523,23 @@ class Gazelle(App):
             mac = "-"
         t.add_row(iface, "station", "On" if wifi_enabled() else "Off", mac)
         
+        # Add WWAN status if wwan device exists
+        try:
+            # Use nmcli to detect if any gsm/wwan device exists
+            r = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,TYPE', 'device'], 
+                             capture_output=True, text=True)
+            wwan_iface = None
+            for line in r.stdout.strip().split('\n'):
+                if ':gsm' in line:
+                    wwan_iface = line.split(':')[0]
+                    break
+            
+            if wwan_iface:
+                # Try to get MAC or IMEI? Just show iface for now
+                t.add_row(wwan_iface, "wwan", "On" if wwan_enabled() else "Off", "-")
+        except:
+            pass
+        
         # Station
         t = self.query_one("#sta")
         t.clear()
@@ -664,6 +682,23 @@ class Gazelle(App):
     def action_toggle_wifi(self) -> None:
         self.notify(f"WiFi {'ON' if toggle_wifi() else 'OFF'}")
         self.set_timer(1, self.refresh_all)
+        
+    def action_toggle_wwan_radio(self) -> None:
+        try:
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"Action Toggle WWAN Triggered. HAS_DBUS: {HAS_DBUS}\n")
+            
+            result = toggle_wwan()
+            msg = "ON" if result else "OFF"
+            
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"Toggle Result: {result} -> {msg}\n")
+                
+            self.notify(f"WWAN {msg}")
+            self.set_timer(1, self.refresh_all)
+        except Exception as e:
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"Action Error: {e}\n")
     
     def action_vpn_screen(self) -> None:
         """Open VPN management screen"""
@@ -674,4 +709,4 @@ class Gazelle(App):
         self.push_screen(WWANScreen())
 
     def action_help(self) -> None:
-        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN w:WWAN d:Disconnect q:Quit", timeout=5)
+        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN w:WWAN d:Disconnect ^R:WiFi ^B:WWAN q:Quit", timeout=5)

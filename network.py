@@ -1,5 +1,12 @@
 """NetworkManager interface"""
 import subprocess
+import sys
+
+try:
+    import dbus
+    HAS_DBUS = True
+except ImportError:
+    HAS_DBUS = False
 
 def get_wifi_interface():
     """Auto-detect WiFi interface"""
@@ -147,6 +154,17 @@ def disconnect():
 
 def wifi_enabled():
     """Check if WiFi is enabled"""
+    if HAS_DBUS:
+        try:
+            bus = dbus.SystemBus()
+            nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+            props = dbus.Interface(nm, "org.freedesktop.DBus.Properties")
+            sw = bool(props.Get("org.freedesktop.NetworkManager", "WirelessEnabled"))
+            hw = bool(props.Get("org.freedesktop.NetworkManager", "WirelessHardwareEnabled"))
+            return sw and hw
+        except Exception:
+            pass
+            
     try:
         result = subprocess.run(['nmcli', 'radio', 'wifi'], capture_output=True, text=True)
         return result.stdout.strip() == 'enabled'
@@ -155,12 +173,64 @@ def wifi_enabled():
 
 def toggle_wifi():
     """Toggle WiFi on/off"""
+    if HAS_DBUS:
+        try:
+            bus = dbus.SystemBus()
+            nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+            props = dbus.Interface(nm, "org.freedesktop.DBus.Properties")
+            current = bool(props.Get("org.freedesktop.NetworkManager", "WirelessEnabled"))
+            props.Set("org.freedesktop.NetworkManager", "WirelessEnabled", not current)
+            return not current
+        except Exception as e:
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"WiFi Toggle DBus Error: {e}\n")
+
     try:
         enabled = wifi_enabled()
         subprocess.run(['nmcli', 'radio', 'wifi', 'off' if enabled else 'on'])
         return not enabled
     except:
         return wifi_enabled()
+
+def wwan_enabled():
+    """Check if WWAN is enabled"""
+    if HAS_DBUS:
+        try:
+            bus = dbus.SystemBus()
+            nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+            props = dbus.Interface(nm, "org.freedesktop.DBus.Properties")
+            sw = bool(props.Get("org.freedesktop.NetworkManager", "WwanEnabled"))
+            hw = bool(props.Get("org.freedesktop.NetworkManager", "WwanHardwareEnabled"))
+            return sw and hw
+        except Exception:
+            pass
+            
+    try:
+        result = subprocess.run(['nmcli', 'radio', 'wwan'], capture_output=True, text=True)
+        return result.stdout.strip() == 'enabled'
+    except:
+        return True
+
+def toggle_wwan():
+    """Toggle WWAN on/off"""
+    if HAS_DBUS:
+        try:
+            bus = dbus.SystemBus()
+            nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+            props = dbus.Interface(nm, "org.freedesktop.DBus.Properties")
+            current = bool(props.Get("org.freedesktop.NetworkManager", "WwanEnabled"))
+            props.Set("org.freedesktop.NetworkManager", "WwanEnabled", not current)
+            return not current
+        except Exception as e:
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"WWAN Toggle DBus Error: {e}\n")
+
+    try:
+        enabled = wwan_enabled()
+        subprocess.run(['nmcli', 'radio', 'wwan', 'off' if enabled else 'on'])
+        return not enabled
+    except:
+        return wwan_enabled()
 
 def is_enterprise(security):
     """Check if network is 802.1X"""
