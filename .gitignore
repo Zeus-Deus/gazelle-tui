@@ -27,3 +27,8 @@ Thumbs.db
 
 # AUR (only needed in AUR repo)
 .SRCINFO
+
+# AI Assistant Development Files
+.claude/
+.serena/
+.superclaude-metadata.json

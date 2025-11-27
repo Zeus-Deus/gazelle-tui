@@ -20,6 +20,19 @@ except ImportError:
     except ImportError:
         tomllib = None  # Will use fallback colors
 
+def normalize_color_format(color):
+    """Convert 0xRRGGBB to #RRGGBB for CSS/Textual compatibility.
+    
+    Args:
+        color: Color string in any format
+    
+    Returns:
+        Color string in CSS format (#RRGGBB)
+    """
+    if isinstance(color, str) and color.startswith('0x'):
+        return '#' + color[2:]
+    return color
+
 class HiddenNetworkScreen(ModalScreen):
     """Modal for connecting to hidden SSID"""
     
@@ -62,7 +75,7 @@ class HiddenNetworkScreen(ModalScreen):
 
 class VPNScreen(ModalScreen):
     """Screen for VPN connection management"""
-    
+
     BINDINGS = [
         ("escape", "cancel", "Back"),
         Binding("j", "cursor_down", show=False),
@@ -71,21 +84,21 @@ class VPNScreen(ModalScreen):
         Binding("r", "refresh", "Refresh"),
         Binding("q", "cancel", "Back"),
     ]
-    
+
     def compose(self) -> ComposeResult:
         yield Container(
             Static("VPN Connections", classes="section-title"),
             DataTable(id="vpn-table", cursor_type="row"),
             classes="section"
         )
-    
+
     def on_mount(self) -> None:
         """Initialize VPN table"""
         table = self.query_one("#vpn-table", DataTable)
         table.add_columns("Status", "Name")
         self.refresh_vpn_list()
         table.focus()
-    
+
     def refresh_vpn_list(self) -> None:
         """Refresh VPN connection list"""
         table = self.query_one("#vpn-table", DataTable)
@@ -93,18 +106,18 @@ class VPNScreen(ModalScreen):
         for vpn in get_vpn_list():
             status = "🟢" if vpn['active'] else "⚪"
             table.add_row(status, vpn['name'])
-    
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection (Enter key)"""
         self.action_toggle_vpn()
-    
+
     def action_toggle_vpn(self) -> None:
         """Toggle VPN connection on Space/Enter key"""
         table = self.query_one("#vpn-table", DataTable)
         if table.cursor_row >= 0 and table.cursor_row < table.row_count:
             row = table.get_row_at(table.cursor_row)
             status, name = str(row[0]), str(row[1])
-            
+
             if status == "🟢":
                 # Disconnect
                 self.notify("Disconnecting...")
@@ -115,26 +128,120 @@ class VPNScreen(ModalScreen):
                 self.notify("Connecting...")
                 success, msg = connect_vpn(name)
                 self.notify("✓ Connected" if success else "✗ Failed")
-            
+
             self.refresh_vpn_list()
-    
+
     def action_cursor_down(self) -> None:
         """Move cursor down"""
         table = self.query_one("#vpn-table", DataTable)
         if table.row_count > 0:
             table.action_cursor_down()
-    
+
     def action_cursor_up(self) -> None:
         """Move cursor up"""
         table = self.query_one("#vpn-table", DataTable)
         if table.row_count > 0:
             table.action_cursor_up()
-    
+
     def action_refresh(self) -> None:
         """Refresh VPN list"""
         self.refresh_vpn_list()
         self.notify("Refreshed")
-    
+
+    def action_cancel(self) -> None:
+        """Return to main screen on Escape"""
+        self.app.pop_screen()
+
+class WWANScreen(ModalScreen):
+    """Screen for WWAN (cellular) connection management"""
+
+    BINDINGS = [
+        ("escape", "cancel", "Back"),
+        Binding("j", "cursor_down", show=False),
+        Binding("k", "cursor_up", show=False),
+        Binding("space", "toggle_wwan", "Connect/Disconnect"),
+        Binding("r", "refresh", "Refresh"),
+        Binding("q", "cancel", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static("WWAN Connections", classes="section-title"),
+            DataTable(id="wwan-table", cursor_type="row"),
+            classes="section"
+        )
+
+    def on_mount(self) -> None:
+        """Initialize WWAN table"""
+        table = self.query_one("#wwan-table", DataTable)
+        table.add_columns("Status", "Name", "Signal", "Operator", "Tech")
+        self.refresh_wwan_list()
+        table.focus()
+
+    def refresh_wwan_list(self) -> None:
+        """Refresh WWAN connection list"""
+        table = self.query_one("#wwan-table", DataTable)
+        table.clear()
+        wwans = get_wwan_list()
+
+        if not wwans:
+            table.add_row("⚪", "No WWAN connections found", "-", "-", "-")
+        else:
+            for wwan in wwans:
+                status = "🟢" if wwan['active'] else "⚪"
+                table.add_row(
+                    status,
+                    wwan['name'],
+                    wwan.get('signal', '-'),
+                    wwan.get('operator', '-'),
+                    wwan.get('tech', '-')
+                )
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection (Enter key)"""
+        self.action_toggle_wwan()
+
+    def action_toggle_wwan(self) -> None:
+        """Toggle WWAN connection on Space/Enter key"""
+        table = self.query_one("#wwan-table", DataTable)
+        if table.cursor_row >= 0 and table.cursor_row < table.row_count:
+            row = table.get_row_at(table.cursor_row)
+            status, name = str(row[0]), str(row[1])
+
+            # Don't try to connect if no connections found
+            if name == "No WWAN connections found":
+                return
+
+            if status == "🟢":
+                # Disconnect
+                self.notify("Disconnecting...")
+                success = disconnect_wwan(name)
+                self.notify("✓ Disconnected" if success else "✗ Failed")
+            else:
+                # Connect
+                self.notify("Connecting...")
+                success, msg = connect_wwan(name)
+                self.notify("✓ Connected" if success else "✗ Failed")
+
+            self.refresh_wwan_list()
+
+    def action_cursor_down(self) -> None:
+        """Move cursor down"""
+        table = self.query_one("#wwan-table", DataTable)
+        if table.row_count > 0:
+            table.action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        """Move cursor up"""
+        table = self.query_one("#wwan-table", DataTable)
+        if table.row_count > 0:
+            table.action_cursor_up()
+
+    def action_refresh(self) -> None:
+        """Refresh WWAN list"""
+        self.refresh_wwan_list()
+        self.notify("Refreshed")
+
     def action_cancel(self) -> None:
         """Return to main screen on Escape"""
         self.app.pop_screen()
@@ -222,10 +329,10 @@ def load_omarchy_colors():
         primary = colors.get("primary", {})
         
         return {
-            "accent": normal.get("yellow") or bright.get("yellow") or "#EBCB8B",
-            "primary": normal.get("red") or bright.get("red") or "#BF616A",
-            "foreground": primary.get("foreground") or "#D8DEE9",
-            "background": primary.get("background") or "#2E3440",
+            "accent": normalize_color_format(normal.get("yellow") or bright.get("yellow") or "#EBCB8B"),
+            "primary": normalize_color_format(normal.get("red") or bright.get("red") or "#BF616A"),
+            "foreground": normalize_color_format(primary.get("foreground") or "#D8DEE9"),
+            "background": normalize_color_format(primary.get("background") or "#2E3440"),
         }
     except Exception:
         # If parsing fails, return None to use fallback
@@ -271,7 +378,9 @@ class Gazelle(App):
         Binding("r", "forget", "Forget"),
         Binding("h", "hidden", "Hidden"),
         Binding("v", "vpn_screen", "VPN"),
+        Binding("w", "wwan_screen", "WWAN"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
+        Binding("ctrl+b", "toggle_wwan_radio", "WWAN Radio"),
         Binding("?", "help", "Help"),
     ]
     
@@ -414,6 +523,23 @@ class Gazelle(App):
         except:
             mac = "-"
         t.add_row(iface, "station", "On" if wifi_enabled() else "Off", mac)
+        
+        # Add WWAN status if wwan device exists
+        try:
+            # Use nmcli to detect if any gsm/wwan device exists
+            r = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,TYPE', 'device'], 
+                             capture_output=True, text=True)
+            wwan_iface = None
+            for line in r.stdout.strip().split('\n'):
+                if ':gsm' in line:
+                    wwan_iface = line.split(':')[0]
+                    break
+            
+            if wwan_iface:
+                # Try to get MAC or IMEI? Just show iface for now
+                t.add_row(wwan_iface, "wwan", "On" if wwan_enabled() else "Off", "-")
+        except:
+            pass
         
         # Station
         t = self.query_one("#sta")
@@ -572,10 +698,31 @@ class Gazelle(App):
     def action_toggle_wifi(self) -> None:
         self.notify(f"WiFi {'ON' if toggle_wifi() else 'OFF'}")
         self.set_timer(1, self.refresh_all)
+        
+    def action_toggle_wwan_radio(self) -> None:
+        try:
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"Action Toggle WWAN Triggered. HAS_DBUS: {HAS_DBUS}\n")
+            
+            result = toggle_wwan()
+            msg = "ON" if result else "OFF"
+            
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"Toggle Result: {result} -> {msg}\n")
+                
+            self.notify(f"WWAN {msg}")
+            self.set_timer(1, self.refresh_all)
+        except Exception as e:
+            with open("/tmp/gazelle_debug.log", "a") as f:
+                f.write(f"Action Error: {e}\n")
     
     def action_vpn_screen(self) -> None:
         """Open VPN management screen"""
         self.push_screen(VPNScreen())
-    
+
+    def action_wwan_screen(self) -> None:
+        """Open WWAN management screen"""
+        self.push_screen(WWANScreen())
+
     def action_help(self) -> None:
         self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN d:Disconnect r:Forget q:Quit", timeout=5)
