@@ -136,6 +136,15 @@ def connect_802_1x(ssid, username, password, eap_method="peap", phase2_auth="msc
     except Exception as e:
         return False, str(e)
 
+def forget_network(ssid):
+    """Delete saved WiFi network by SSID"""
+    try:
+        result = subprocess.run(['nmcli', 'connection', 'delete', ssid],
+                               capture_output=True, text=True)
+        return result.returncode == 0
+    except:
+        return False
+
 def disconnect():
     """Disconnect from network"""
     try:

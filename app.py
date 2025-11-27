@@ -268,6 +268,7 @@ class Gazelle(App):
         Binding("space", "select", "Connect"),
         Binding("s", "scan", "Scan"),
         Binding("d", "disconnect", "Disconnect"),
+        Binding("r", "forget", "Forget"),
         Binding("h", "hidden", "Hidden"),
         Binding("v", "vpn_screen", "VPN"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
@@ -553,6 +554,21 @@ class Gazelle(App):
         self.notify("Disconnected" if disconnect() else "Not connected")
         self.refresh_all()
     
+    def action_forget(self) -> None:
+        """Remove selected known network"""
+        known = self.query_one("#known")
+        if not known.has_focus or known.row_count == 0:
+            return
+        if known.cursor_row < 0 or known.cursor_row >= known.row_count:
+            return
+        row = known.get_row_at(known.cursor_row)
+        ssid = str(row[0]).strip()
+        if not ssid:
+            return
+        success = forget_network(ssid)
+        self.notify("✓ Network forgotten" if success else "✗ Failed")
+        self.refresh_all()
+
     def action_toggle_wifi(self) -> None:
         self.notify(f"WiFi {'ON' if toggle_wifi() else 'OFF'}")
         self.set_timer(1, self.refresh_all)
@@ -562,4 +578,4 @@ class Gazelle(App):
         self.push_screen(VPNScreen())
     
     def action_help(self) -> None:
-        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN d:Disconnect q:Quit", timeout=5)
+        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN d:Disconnect r:Forget q:Quit", timeout=5)
