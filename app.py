@@ -338,6 +338,77 @@ def load_omarchy_colors():
         # If parsing fails, return None to use fallback
         return None
 
+def load_user_colors():
+    """
+    Load colors from user defined theme file.
+    Returns dict with RGB color values, or None if not found.
+    Create file if it doesnt exist, dont load after creation.
+    """
+    if tomllib is None or try_create_user_theme_template(): 
+        return None
+    theme_file = Path.home() / ".config/gazelle/theme.toml"
+    
+    if not theme_file.exists():
+        return None
+    
+    try:
+        with open(theme_file, "rb") as f:
+            data = tomllib.load(f)
+        
+        colors = data.get("colors", {})
+        normal = colors.get("normal", {})
+        bright = colors.get("bright", {})
+        primary = colors.get("primary", {})
+        
+        return {
+            "accent": normalize_color_format(normal.get("yellow") or bright.get("yellow") or "#EBCB8B"),
+            "primary": normalize_color_format(normal.get("red") or bright.get("red") or "#BF616A"),
+            "foreground": normalize_color_format(primary.get("foreground") or "#D8DEE9"),
+            "background": normalize_color_format(primary.get("background") or "#2E3440"),
+        }
+    except Exception:
+        # If parsing fails, return None to use fallback
+        return None
+
+def try_create_user_theme_template():
+    """If file doesn't exist, create a template theme.toml file with commented examples"""
+    theme_file = Path.home() / ".config/gazelle/theme.toml"
+    theme_dir = theme_file.parent
+    
+    # Create directory if it doesn't exist
+    theme_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not theme_file.exists():
+        template_content = """# Gazelle Theme Configuration
+# Uncomment and modify these values to customize your theme
+# Colors should be in hex format (#RRGGBB) or 0xRRGGBB
+[colors.primary]
+#foreground = "#D8DEE9"
+#background = "#2E3440"
+[colors.normal]
+#black = "#3B4252"
+#red = "#BF616A"
+#green = "#A3BE8C"
+#yellow = "#EBCB8B"
+#blue = "#5E81AC"
+#magenta = "#B48EAD"
+#cyan = "#88C0D0"
+#white = "#E5E9F0"
+[colors.bright]
+#black = "#4C566A"
+#red = "#D08770"
+#green = "#8FBCBB"
+#yellow = "#EBCB8B"
+#blue = "#81A1C1"
+#magenta = "#B48EAD"
+#cyan = "#8FBCBB"
+#white = "#ECEFF4"
+"""
+        with open(theme_file, "w") as f:
+            f.write(template_content)
+        return True
+    return False
+
 class Gazelle(App):
     ansi_color = True  # Enable terminal ANSI color support
     CSS = """
@@ -401,7 +472,24 @@ class Gazelle(App):
     def on_mount(self) -> None:
         # Try to load Omarchy colors
         omarchy_colors = load_omarchy_colors()
-        
+        # Try to load custom theme
+        user_colors = load_user_colors()
+        if user_colors:
+            # Register theme with exact RGB values
+            self.register_theme(
+                Theme(
+                    name="user-theme (edit ~/.config/gazelle/theme.toml)",
+                    primary=user_colors["primary"],
+                    secondary=user_colors["accent"],
+                    accent=user_colors["accent"],
+                    foreground=user_colors["foreground"],
+                    background=user_colors["background"],
+                    surface=user_colors["background"],
+                    panel=user_colors["background"],
+                    dark=True,
+                )
+            )
+            default_theme = "user-theme"
         if omarchy_colors:
             # Register Omarchy-specific theme with exact RGB values
             self.register_theme(
@@ -417,7 +505,8 @@ class Gazelle(App):
                     dark=True,
                 )
             )
-            default_theme = "omarchy-auto"
+            if not user_colors:
+                default_theme = "omarchy-auto"
         else:
             # Fallback: Use ANSI colors for non-Omarchy users
             self.register_theme(
@@ -458,7 +547,7 @@ class Gazelle(App):
         self.run_worker(self.scan_networks_async, exclusive=True)
         
         self.query_one("#new").focus()
-    
+
     def load_config(self) -> dict:
         """Load configuration from ~/.config/gazelle/config.json
         

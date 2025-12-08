@@ -375,6 +375,12 @@ Gazelle supports all built-in Textual themes with automatic persistence.
 
 **Config File Location:** `~/.config/gazelle/config.json`
 
+## Custom Themes
+
+Create your own color schemes by editing `~/.config/gazelle/theme.toml`. The file is automatically generated with commented examples on first run.
+
+Your custom theme appears as "user-theme" in the theme picker (`Ctrl+P`).
+
 ## Connecting to eduroam
 
 1. Select eduroam network (shows as "802.1x" in Security column)
