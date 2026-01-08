@@ -21,6 +21,7 @@ paru -S gazelle-tui
 ### From GURU (Gentoo)
 
 [Documentation on GURU](https://wiki.gentoo.org/wiki/Project:GURU/Information_for_End_Users)
+
 ```bash
 $ # If you don't have GURU enabled already, you need to add it to your system.
 $ sudo eselect repository enable guru
@@ -73,6 +74,7 @@ modules = [
 ```
 
 Don't forget to add the package as well:
+
 ```nix
     home.packages =  [
       inputs.gazelle.packages.${pkgs.system}.default
@@ -102,7 +104,9 @@ Apply the configuration:
 ```bash
 home-manager switch
 ```
+
 or rebuild your flake
+
 ```bash
 nixos-rebuild switch --flake .#myFlake
 ```
@@ -170,8 +174,9 @@ Create a window rules configuration file:
 
 ```bash
 cat > ~/.config/hypr/windows.conf << 'EOF'
-# Gazelle WiFi TUI - floating window like Impala
-windowrule = tag +floating-window, class:(Gazelle)
+# Gazelle WiFi TUI - floating window
+# New Hyprland Syntax
+windowrule = tag +floating-window, match:class Gazelle
 EOF
 ```
 
@@ -202,11 +207,9 @@ Create a window rules configuration file:
 
 ```bash
 cat > ~/.config/hypr/windows.conf << 'EOF'
-# Gazelle WiFi TUI - floating window like Impala
-# Using windowrulev2 and initialClass for xdg-terminal-exec compatibility
-windowrulev2 = float, initialClass:(Gazelle)
-windowrulev2 = center, initialClass:(Gazelle)
-windowrulev2 = size 800 600, initialClass:(Gazelle)
+# Gazelle WiFi TUI - floating window
+# New Hyprland Syntax using match:initial_class (xdg-terminal-exec friendly)
+windowrule = float on, center on, size 800 600, match:initial_class Gazelle
 EOF
 ```
 
@@ -253,7 +256,7 @@ Now clicking the WiFi icon in Waybar will launch Gazelle as a centered, floating
 - `center` - Centered on screen
 - `size 800 600` - Fixed size matching other Omarchy TUIs
 
-**New Style:** The `windowrulev2` rules explicitly define:
+**New Style:** The `windowrule` rules explicitly define:
 
 - `float` - Window floats instead of tiling
 - `center` - Centered on screen
@@ -486,6 +489,7 @@ Once imported, your WireGuard connection appears in Gazelle's VPN screen:
 Gazelle now supports managing cellular (4G/5G) modem connections!
 
 **Features:**
+
 - List all configured GSM connections
 - Connect/disconnect with keyboard
 - Live signal strength monitoring
@@ -509,15 +513,18 @@ Gazelle's WWAN support works with **any cellular modem supported by ModemManager
 ### Requirements
 
 **Software dependencies:**
+
 - ModemManager (provides `mmcli` command)
 - NetworkManager (provides `nmcli` command)
 
 **Hardware requirements:**
+
 - Compatible cellular modem (USB, M.2, or PCIe)
 - Linux kernel with appropriate WWAN drivers
 - Active SIM card with data plan
 
 **Compatible distributions:**
+
 - Arch Linux (tested)
 - Ubuntu/Debian
 - Fedora/RHEL
@@ -529,12 +536,14 @@ Gazelle's WWAN support works with **any cellular modem supported by ModemManager
 WWAN connections are typically auto-configured by ModemManager, but you can also create them manually:
 
 **1. Check if modem is detected:**
+
 ```bash
 mmcli -L  # List modems
 mmcli -m 0  # Show modem details
 ```
 
 **2. Create GSM connection (if not auto-created):**
+
 ```bash
 nmcli connection add type gsm ifname "*" con-name "My Carrier" apn "internet"
 ```
@@ -542,6 +551,7 @@ nmcli connection add type gsm ifname "*" con-name "My Carrier" apn "internet"
 Replace `"internet"` with your carrier's APN (e.g., `"fast.t-mobile.com"` for T-Mobile US).
 
 **3. Use Gazelle:**
+
 - Press `w` to open WWAN screen
 - Select your connection
 - Use `Space` to connect/disconnect
@@ -551,6 +561,7 @@ Replace `"internet"` with your carrier's APN (e.g., `"fast.t-mobile.com"` for T-
 ### Troubleshooting
 
 **No modems detected:**
+
 ```bash
 # Check if ModemManager sees your modem
 mmcli -L
@@ -560,11 +571,13 @@ lsusb | grep -i modem  # For USB modems
 ```
 
 **Connection fails:**
+
 - Verify APN settings for your carrier
 - Check SIM card is inserted and unlocked
 - Ensure you're in an area with cellular coverage
 
 **No ModemManager service:**
+
 ```bash
 sudo systemctl enable --now ModemManager
 ```
@@ -582,11 +595,13 @@ All connections are stored in `/etc/NetworkManager/` and persist across reboots.
 ## Requirements
 
 **Core dependencies:**
+
 - Linux with NetworkManager
 - Python 3.8+
 - textual>=0.47.0
 
 **Optional (for specific features):**
+
 - ModemManager - Required for WWAN/cellular support
 - networkmanager-openvpn - Required for OpenVPN support
 - wireguard-tools - Required for WireGuard support
