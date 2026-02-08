@@ -382,6 +382,8 @@ Gazelle supports all built-in Textual themes with automatic persistence.
 
 Create your own color schemes by editing `~/.config/gazelle/theme.toml`. The file is automatically generated with commented examples on first run.
 
+**Omarchy Users:** As long as you leave the `theme.toml` file commented out (default), your automatic theme syncing will continue working. Defining colors in this file will override the Omarchy theme.
+
 Your custom theme appears as "user-theme" in the theme picker (`Ctrl+P`).
 
 ## Connecting to eduroam
@@ -418,8 +420,7 @@ Gazelle now supports managing VPN connections directly from the TUI!
 
 - List all configured VPN connections
 - Connect/disconnect with keyboard
-- Visual status indicators (🟢 connected, ⚪ disconnected)
-- Press `v` to open VPN screen
+- Visual status indicators (🟢 connected, ⚪ disconnected)\n- Press `v` to open VPN screen
 
 ### Setting Up VPN Connections
 
@@ -499,8 +500,7 @@ Gazelle now supports managing cellular (4G/5G) modem connections!
 - List all configured GSM connections
 - Connect/disconnect with keyboard
 - Live signal strength monitoring
-- Operator and technology display (LTE, 5G, etc.)
-- Visual status indicators (🟢 connected, ⚪ disconnected)
+- Operator and technology display (LTE, 5G, etc.)\n- Visual status indicators (🟢 connected, ⚪ disconnected)
 - Press `w` to open WWAN screen
 
 ### Hardware Compatibility
