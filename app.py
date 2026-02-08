@@ -338,16 +338,16 @@ def load_omarchy_colors():
         # If parsing fails, return None to use fallback
         return None
 
-def load_user_colors():
+def load_user_colors(config_dir: Path):
     """
     Load colors from user defined theme file.
     Returns dict with RGB color values, or None if not found.
     Create file if it doesnt exist, dont load after creation.
     """
-    if tomllib is None or try_create_user_theme_template(): 
+    if tomllib is None or try_create_user_theme_template(config_dir):
         return None
-    theme_file = Path.home() / ".config/gazelle/theme.toml"
-    
+    theme_file = config_dir / "theme.toml"
+
     if not theme_file.exists():
         return None
     
@@ -370,9 +370,9 @@ def load_user_colors():
         # If parsing fails, return None to use fallback
         return None
 
-def try_create_user_theme_template():
+def try_create_user_theme_template(config_dir: Path):
     """If file doesn't exist, create a template theme.toml file with commented examples"""
-    theme_file = Path.home() / ".config/gazelle/theme.toml"
+    theme_file = config_dir / "theme.toml"
     theme_dir = theme_file.parent
     
     # Create directory if it doesn't exist
@@ -473,7 +473,7 @@ class Gazelle(App):
         # Try to load Omarchy colors
         omarchy_colors = load_omarchy_colors()
         # Try to load custom theme
-        user_colors = load_user_colors()
+        user_colors = load_user_colors(self.CONFIG_DIR)
         if user_colors:
             # Register theme with exact RGB values
             self.register_theme(
