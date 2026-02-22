@@ -159,14 +159,14 @@ yay -S gazelle-tui
 
 ### Step 2: Choose Your Configuration Method
 
-**Important:** Omarchy changed how terminals are launched in November 2025 (version ~3.1.5+). Choose the configuration that matches your Omarchy version:
+**Important:** Omarchy changed how terminals are launched in November 2025 (version ~3.1.5+), and again in February 2026 (version 3.2.0+) with the switch to Ghostty. Choose the configuration that matches your Omarchy version:
 
 - **Omarchy versions before November 2025** → Use **Old Style** configuration
 - **Omarchy versions from November 2025 onwards** → Use **New Style** configuration
 
 #### Old Style (Pre-November 2025 Omarchy)
 
-For older Omarchy versions that launch terminals directly:
+For older Omarchy versions that launch terminals directly (like Alacritty/Kitty):
 
 **Configure Hyprland Window Rules:**
 
@@ -175,7 +175,7 @@ Create a window rules configuration file:
 ```bash
 cat > ~/.config/hypr/windows.conf << 'EOF'
 # Gazelle WiFi TUI - floating window
-# New Hyprland Syntax
+# Old Hyprland Syntax
 windowrule = tag +floating-window, match:class Gazelle
 EOF
 ```
@@ -199,7 +199,7 @@ Edit `~/.config/waybar/config.jsonc` and change the network module's `on-click`:
 
 #### New Style (November 2025+ Omarchy)
 
-For newer Omarchy versions that use `xdg-terminal-exec`:
+For newer Omarchy versions that use `xdg-terminal-exec` as a universal terminal launcher (including the default Ghostty terminal):
 
 **Configure Hyprland Window Rules:**
 
@@ -208,8 +208,8 @@ Create a window rules configuration file:
 ```bash
 cat > ~/.config/hypr/windows.conf << 'EOF'
 # Gazelle WiFi TUI - floating window
-# New Hyprland Syntax using match:initial_class (xdg-terminal-exec friendly)
-windowrule = float on, center on, size 800 600, match:initial_class Gazelle
+# New Hyprland Syntax using match:initial_class (xdg-terminal-exec and Ghostty friendly)
+windowrule = float on, center on, size 800 600, match:initial_class org.omarchy.Gazelle
 EOF
 ```
 
@@ -226,15 +226,16 @@ Edit `~/.config/waybar/config.jsonc` and change the network module's `on-click`:
 ```jsonc
 "network": {
     ...
-    "on-click": "xdg-terminal-exec --app-id=Gazelle -e gazelle"
+    "on-click": "xdg-terminal-exec --app-id=org.omarchy.Gazelle -e gazelle"
 }
 ```
 
 **Why the change?**
 
-- Omarchy now uses `xdg-terminal-exec` as a universal terminal launcher
-- `xdg-terminal-exec` uses `--app-id` instead of `--class` for window identification
-- Hyprland's `windowrulev2` with `initialClass` is required for proper window matching
+- Omarchy uses `xdg-terminal-exec` as a universal terminal launcher.
+- `xdg-terminal-exec` passes `--app-id` down to the default terminal. 
+- **CRITICAL for Ghostty (Omarchy 3.2.0+ default):** Ghostty is a GTK application and strictly requires a valid D-Bus application ID format (it must contain at least one period, e.g., `org.omarchy.Gazelle`). Passing a simple string like `Gazelle` will be rejected by GTK, causing the window rule to fail!
+- Hyprland's `windowrule` with `match:initial_class` is required for proper window matching.
 
 ### Step 3: Apply Changes
 
@@ -330,7 +331,7 @@ Gazelle automatically detects and matches your Omarchy theme colors!
 
 **How it works:**
 
-- Omarchy users: Gazelle reads `~/.config/omarchy/current/theme/alacritty.toml` and uses your exact theme colors
+- Omarchy users: Gazelle reads `~/.config/omarchy/current/theme/alacritty.toml` (or `ghostty.conf`) and uses your exact theme colors
 - Theme changes: Just restart Gazelle after changing Omarchy themes
 - No configuration needed!
 
