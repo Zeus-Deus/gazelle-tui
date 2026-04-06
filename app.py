@@ -478,7 +478,7 @@ class Gazelle(App):
             # Register theme with exact RGB values
             self.register_theme(
                 Theme(
-                    name="user-theme (edit ~/.config/gazelle/theme.toml)",
+                    name="user-theme",
                     primary=user_colors["primary"],
                     secondary=user_colors["accent"],
                     accent=user_colors["accent"],
@@ -522,7 +522,8 @@ class Gazelle(App):
                     dark=True,
                 )
             )
-            default_theme = "auto"
+            if not user_colors:
+                default_theme = "auto"
 
         # Load saved theme or use default
         config = self.load_config()
@@ -560,7 +561,7 @@ class Gazelle(App):
         except (json.JSONDecodeError, OSError) as e:
             # If config is corrupted, log error and return empty dict
             self.log.error(f"Failed to load config: {e}")
-        return {"theme": "auto"}  # Default new installations to auto theme
+        return {}
     
     def save_config(self, data: dict) -> None:
         """Save configuration to ~/.config/gazelle/config.json
