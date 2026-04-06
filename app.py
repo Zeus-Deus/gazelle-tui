@@ -246,6 +246,58 @@ class WWANScreen(ModalScreen):
         """Return to main screen on Escape"""
         self.app.pop_screen()
 
+class Wired8021xScreen(ModalScreen):
+    """Modal for connecting to wired 802.1X network"""
+
+    BINDINGS = [
+        ("enter", "submit", "Submit"),
+        ("escape", "cancel", "Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Static("Wired 802.1X Connection", id="title"),
+            Static("Connection Name:"),
+            Input(placeholder="e.g. office-wired", id="con_name"),
+            Static("EAP Method:"),
+            Select([("PEAP", "peap"), ("TTLS", "ttls"), ("TLS", "tls")], value="peap", id="eap"),
+            Static("Phase 2 Auth:"),
+            Select([("MSCHAPv2", "mschapv2"), ("MSCHAP", "mschap"), ("PAP", "pap"),
+                   ("CHAP", "chap"), ("GTC", "gtc"), ("MD5", "md5")], value="mschapv2", id="phase2"),
+            Static("Username:"), Input(placeholder="user@domain.com", id="user"),
+            Static("Password:"), Input(placeholder="Password", password=True, id="pwd"),
+            Horizontal(Button("Connect", variant="primary", id="ok"), Button("Cancel", id="no")),
+            id="dialog"
+        )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "no":
+            self.app.pop_screen()
+        elif event.button.id == "ok":
+            self._submit()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key in Input fields"""
+        self._submit()
+
+    def _submit(self) -> None:
+        """Submit the form"""
+        con_name = self.query_one("#con_name", Input).value
+        user = self.query_one("#user", Input).value
+        pwd = self.query_one("#pwd", Input).value
+        eap = self.query_one("#eap", Select).value
+        phase2 = self.query_one("#phase2", Select).value
+        if con_name and user and pwd:
+            self.dismiss((con_name, user, pwd, eap, phase2))
+
+    def action_cancel(self) -> None:
+        """Handle Esc key"""
+        self.app.pop_screen()
+
+    def action_submit(self) -> None:
+        """Handle Enter key binding"""
+        self._submit()
+
 class PasswordScreen(ModalScreen):
     BINDINGS = [
         ("enter", "submit", "Submit"),
@@ -412,7 +464,7 @@ def try_create_user_theme_template(config_dir: Path):
 class Gazelle(App):
     ansi_color = True  # Enable terminal ANSI color support
     CSS = """
-    PasswordScreen, HiddenNetworkScreen { align: center middle; }
+    PasswordScreen, HiddenNetworkScreen, Wired8021xScreen { align: center middle; }
     #dialog { width: 60; height: auto; border: thick $accent; background: $background; padding: 1 2; }
     #title { text-style: bold; color: $accent; margin-bottom: 1; }
     .section { border: solid $accent; margin: 1 2; padding: 0 1; }
@@ -452,6 +504,7 @@ class Gazelle(App):
         Binding("w", "wwan_screen", "WWAN"),
         Binding("ctrl+r", "toggle_wifi", "WiFi"),
         Binding("ctrl+b", "toggle_wwan_radio", "WWAN Radio"),
+        Binding("e", "wired_8021x", "802.1X Wired"),
         Binding("?", "help", "Help"),
     ]
     
@@ -813,5 +866,23 @@ class Gazelle(App):
         """Open WWAN management screen"""
         self.push_screen(WWANScreen())
 
+    def action_wired_8021x(self) -> None:
+        """Open wired 802.1X connection dialog"""
+        iface = get_ethernet_interface()
+        if not iface:
+            self.notify("No Ethernet interface found")
+            return
+        self.push_screen(Wired8021xScreen(), self.handle_wired_8021x)
+
+    def handle_wired_8021x(self, result) -> None:
+        """Handle wired 802.1X connection result"""
+        if not result:
+            return
+        con_name, user, pwd, eap, phase2 = result
+        self.notify("Connecting...")
+        ok, msg = connect_802_1x_wired(con_name, user, pwd, eap or "peap", phase2 or "mschapv2")
+        self.notify("✓ Connected" if ok else f"✗ {msg}")
+        self.refresh_all()
+
     def action_help(self) -> None:
-        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN d:Disconnect r:Forget q:Quit", timeout=5)
+        self.notify("j/k:Move Tab:Switch Space:Connect s:Scan h:Hidden v:VPN e:802.1X Wired d:Disconnect r:Forget q:Quit", timeout=5)
