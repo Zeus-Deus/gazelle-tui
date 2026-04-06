@@ -241,6 +241,74 @@ def toggle_wwan():
     except:
         return wwan_enabled()
 
+def get_ethernet_interface():
+    """Auto-detect Ethernet interface"""
+    try:
+        result = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,TYPE', 'device'],
+                               capture_output=True, text=True, check=True)
+        for line in result.stdout.strip().split('\n'):
+            if ':ethernet' in line:
+                return line.split(':')[0]
+    except:
+        pass
+    return None
+
+def connect_802_1x_wired(con_name, username, password, eap_method="peap", phase2_auth="mschapv2"):
+    """Connect to 802.1X enterprise wired network
+
+    Supports:
+    - EAP: peap, ttls, tls
+    - Phase2: mschapv2, mschap, pap, chap, gtc, md5
+    """
+    try:
+        iface = get_ethernet_interface()
+        if not iface:
+            return False, "No Ethernet interface found"
+
+        subprocess.run(['nmcli', 'connection', 'delete', con_name], capture_output=True)
+
+        # Build command for wired 802.1X
+        cmd = [
+            'nmcli', 'connection', 'add', 'type', '802-3-ethernet', 'con-name', con_name,
+            'ifname', iface, '802-1x.eap', eap_method.lower(), '802-1x.identity', username
+        ]
+
+        # Add auth-specific parameters
+        if eap_method.lower() in ['peap', 'ttls']:
+            cmd.extend(['802-1x.phase2-auth', phase2_auth.lower()])
+            cmd.extend(['802-1x.password', password])
+        elif eap_method.lower() == 'tls':
+            cmd.extend(['802-1x.private-key-password', password])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            return False, result.stderr
+
+        result = subprocess.run(['nmcli', 'connection', 'up', con_name],
+                               capture_output=True, text=True)
+
+        # If connection failed, delete the connection profile that was created
+        if result.returncode != 0:
+            subprocess.run(['nmcli', 'connection', 'delete', con_name],
+                          capture_output=True, text=True)
+
+        return result.returncode == 0, result.stderr or "Connected"
+    except Exception as e:
+        return False, str(e)
+
+def disconnect_ethernet():
+    """Disconnect from wired network"""
+    try:
+        iface = get_ethernet_interface()
+        if not iface:
+            return False
+        result = subprocess.run(['nmcli', 'device', 'disconnect', iface],
+                               capture_output=True, text=True)
+        return result.returncode == 0
+    except:
+        return False
+
 def is_enterprise(security):
     """Check if network is 802.1X"""
     return 'WPA-EAP' in security or '802.1X' in security
