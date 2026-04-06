@@ -19,7 +19,7 @@
       in {
         packages.default = pythonPackages.buildPythonApplication rec {
           pname = "gazelle-tui";
-          version = "1.8.3";
+          version = "1.8.4";
           src = ./.;
           format = "other";
 
