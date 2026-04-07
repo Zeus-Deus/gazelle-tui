@@ -581,6 +581,25 @@ class Gazelle(App):
         # Load saved theme or use default
         config = self.load_config()
         saved_theme = config.get("theme", default_theme)
+
+        # If config requests user-theme but colors couldn't be loaded
+        # (e.g. first run before theme.toml is customized, or Nix-managed config),
+        # register it with fallback colors so the theme name is valid.
+        if saved_theme == "user-theme" and not user_colors:
+            self.register_theme(
+                Theme(
+                    name="user-theme",
+                    primary="#BF616A",
+                    secondary="#EBCB8B",
+                    accent="#EBCB8B",
+                    foreground="#D8DEE9",
+                    background="#2E3440",
+                    surface="#2E3440",
+                    panel="#2E3440",
+                    dark=True,
+                )
+            )
+
         try:
             self.theme = saved_theme
         except Exception:
