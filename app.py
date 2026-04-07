@@ -402,16 +402,16 @@ def load_user_colors(config_dir: Path):
 
     if not theme_file.exists():
         return None
-    
+
     try:
         with open(theme_file, "rb") as f:
             data = tomllib.load(f)
-        
+
         colors = data.get("colors", {})
         normal = colors.get("normal", {})
         bright = colors.get("bright", {})
         primary = colors.get("primary", {})
-        
+
         return {
             "accent": normalize_color_format(normal.get("yellow") or bright.get("yellow") or "#EBCB8B"),
             "primary": normalize_color_format(normal.get("red") or bright.get("red") or "#BF616A"),
@@ -421,6 +421,88 @@ def load_user_colors(config_dir: Path):
     except Exception:
         # If parsing fails, return None to use fallback
         return None
+
+# Default style values matching the original hardcoded CSS
+DEFAULT_STYLES = {
+    "dialog_border": "thick",
+    "dialog_width": "60",
+    "dialog_padding": "1 2",
+    "section_border": "solid",
+    "section_margin": "1 2",
+    "section_padding": "0 1",
+    "section_title_padding": "0 1",
+    "info_section_height": "5",
+    "input_height": "3",
+    "button_min_width": "12",
+    "cursor_opacity": "30%",
+    "hover_opacity": "20%",
+    "title_text_style": "bold",
+    "section_title_text_style": "bold",
+}
+
+# Valid Textual border styles for validation
+VALID_BORDER_STYLES = {"none", "ascii", "blank", "dashed", "double", "heavy", "hidden", "hkey", "inner", "outer", "panel", "round", "solid", "tall", "thick", "vkey", "wide"}
+
+def load_user_styles(config_dir: Path):
+    """
+    Load TUI style overrides from user theme file.
+    Returns dict with style values merged over defaults.
+    """
+    styles = dict(DEFAULT_STYLES)
+
+    if tomllib is None:
+        return styles
+
+    theme_file = config_dir / "theme.toml"
+    if not theme_file.exists():
+        return styles
+
+    try:
+        with open(theme_file, "rb") as f:
+            data = tomllib.load(f)
+
+        user_styles = data.get("styles", {})
+        for key, value in user_styles.items():
+            # Normalize key: allow hyphens or underscores
+            norm_key = key.replace("-", "_")
+            if norm_key in DEFAULT_STYLES:
+                str_val = str(value)
+                # Validate border styles
+                if norm_key in ("dialog_border", "section_border"):
+                    if str_val.lower() not in VALID_BORDER_STYLES:
+                        continue
+                    str_val = str_val.lower()
+                styles[norm_key] = str_val
+    except Exception:
+        pass
+
+    return styles
+
+def build_css(styles: dict) -> str:
+    """Build Textual CSS string from style configuration."""
+    return f"""
+    PasswordScreen, HiddenNetworkScreen, Wired8021xScreen {{ align: center middle; }}
+    #dialog {{ width: {styles['dialog_width']}; height: auto; border: {styles['dialog_border']} $accent; background: $background; padding: {styles['dialog_padding']}; }}
+    #title {{ text-style: {styles['title_text_style']}; color: $accent; margin-bottom: 1; }}
+    .section {{ border: {styles['section_border']} $accent; margin: {styles['section_margin']}; padding: {styles['section_padding']}; }}
+    .section-title {{ text-style: {styles['section_title_text_style']}; color: $accent; background: $background; padding: {styles['section_title_padding']}; }}
+    #device-section, #station-section {{ height: {styles['info_section_height']}; }}
+    Static {{ height: auto; }}
+    Input {{ height: {styles['input_height']}; margin-bottom: 1; }}
+    Select {{ height: {styles['input_height']}; margin-bottom: 1; }}
+    Horizontal {{ height: auto; margin-top: 1; }}
+    Button {{ min-width: {styles['button_min_width']}; }}
+
+    /* DataTable selection/cursor colors */
+    DataTable > .datatable--cursor {{
+        background: $accent {styles['cursor_opacity']};
+        color: $foreground;
+    }}
+
+    DataTable > .datatable--hover {{
+        background: $accent {styles['hover_opacity']};
+    }}
+    """
 
 def try_create_user_theme_template(config_dir: Path):
     """If file doesn't exist, create a template theme.toml file with commented examples"""
@@ -455,6 +537,27 @@ def try_create_user_theme_template(config_dir: Path):
 #magenta = "#B48EAD"
 #cyan = "#8FBCBB"
 #white = "#ECEFF4"
+
+# TUI Style Overrides
+# Uncomment and modify these values to customize borders, spacing, etc.
+# Border styles: ascii, blank, dashed, double, heavy, hidden, hkey, inner,
+#   none, outer, panel, round, solid, tall, thick, vkey, wide
+# Spacing values use Textual CSS units (e.g. "1 2" = 1 vertical, 2 horizontal)
+[styles]
+#dialog_border = "thick"
+#dialog_width = "60"
+#dialog_padding = "1 2"
+#section_border = "solid"
+#section_margin = "1 2"
+#section_padding = "0 1"
+#section_title_padding = "0 1"
+#info_section_height = "5"
+#input_height = "3"
+#button_min_width = "12"
+#cursor_opacity = "30%"
+#hover_opacity = "20%"
+#title_text_style = "bold"
+#section_title_text_style = "bold"
 """
         with open(theme_file, "w") as f:
             f.write(template_content)
@@ -463,33 +566,14 @@ def try_create_user_theme_template(config_dir: Path):
 
 class Gazelle(App):
     ansi_color = True  # Enable terminal ANSI color support
-    CSS = """
-    PasswordScreen, HiddenNetworkScreen, Wired8021xScreen { align: center middle; }
-    #dialog { width: 60; height: auto; border: thick $accent; background: $background; padding: 1 2; }
-    #title { text-style: bold; color: $accent; margin-bottom: 1; }
-    .section { border: solid $accent; margin: 1 2; padding: 0 1; }
-    .section-title { text-style: bold; color: $accent; background: $background; padding: 0 1; }
-    #device-section, #station-section { height: 5; }
-    Static { height: auto; }
-    Input { height: 3; margin-bottom: 1; }
-    Select { height: 3; margin-bottom: 1; }
-    Horizontal { height: auto; margin-top: 1; }
-    Button { min-width: 12; }
 
-    /* DataTable selection/cursor colors */
-    DataTable > .datatable--cursor {
-        background: $accent 30%;
-        color: $foreground;
-    }
-
-    DataTable > .datatable--hover {
-        background: $accent 20%;
-    }
-    """
-    
     TITLE = "Gazelle"
     CONFIG_DIR = Path.home() / ".config" / "gazelle"
     CONFIG_FILE = CONFIG_DIR / "config.json"
+
+    # Load user styles and build CSS dynamically
+    _user_styles = load_user_styles(CONFIG_DIR)
+    CSS = build_css(_user_styles)
     BINDINGS = [
         Binding("q", "quit", "Quit"),
         Binding("j", "cursor_down", show=False),
