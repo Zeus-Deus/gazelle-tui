@@ -390,6 +390,54 @@ def load_omarchy_colors():
         # If parsing fails, return None to use fallback
         return None
 
+def load_omarchy_styles():
+    """
+    Detect border style preferences from Omarchy's Hyprland config.
+    Checks all Hyprland config sources in cascade order (last value wins):
+      1. ~/.local/share/omarchy/default/hypr/looknfeel.conf (system default)
+      2. ~/.config/omarchy/current/theme/hyprland.conf (theme override)
+      3. ~/.config/hypr/looknfeel.conf (user override)
+    Returns dict with border style overrides, or None if not found.
+    """
+    # Check if this is an Omarchy system
+    omarchy_indicator = Path.home() / ".config/omarchy/current/theme/alacritty.toml"
+    if not omarchy_indicator.exists():
+        return None
+
+    # Hyprland sources in cascade order — last uncommented value wins
+    config_files = [
+        Path.home() / ".local/share/omarchy/default/hypr/looknfeel.conf",
+        Path.home() / ".config/omarchy/current/theme/hyprland.conf",
+        Path.home() / ".config/hypr/looknfeel.conf",
+    ]
+
+    rounding = 0  # Default: no rounding
+
+    try:
+        for config_file in config_files:
+            if not config_file.exists():
+                continue
+            with open(config_file, "r") as f:
+                for line in f:
+                    stripped = line.strip()
+                    # Skip comments
+                    if stripped.startswith("#"):
+                        continue
+                    if "rounding" in stripped and "=" in stripped:
+                        key, _, val = stripped.partition("=")
+                        if key.strip() == "rounding":
+                            rounding = int(val.strip())
+    except Exception:
+        return None
+
+    if rounding > 0:
+        return {
+            "dialog_border": "round",
+            "section_border": "round",
+        }
+
+    return None
+
 def load_user_colors(config_dir: Path):
     """
     Load colors from user defined theme file.
@@ -443,12 +491,19 @@ DEFAULT_STYLES = {
 # Valid Textual border styles for validation
 VALID_BORDER_STYLES = {"none", "ascii", "blank", "dashed", "double", "heavy", "hidden", "hkey", "inner", "outer", "panel", "round", "solid", "tall", "thick", "vkey", "wide"}
 
-def load_user_styles(config_dir: Path):
+def load_user_styles(config_dir: Path, omarchy_styles: dict = None):
     """
     Load TUI style overrides from user theme file.
     Returns dict with style values merged over defaults.
+    Priority: defaults -> omarchy auto-detect -> user theme.toml
     """
     styles = dict(DEFAULT_STYLES)
+
+    # Apply Omarchy auto-detected styles over defaults
+    if omarchy_styles:
+        for key, value in omarchy_styles.items():
+            if key in DEFAULT_STYLES:
+                styles[key] = value
 
     if tomllib is None:
         return styles
@@ -571,8 +626,9 @@ class Gazelle(App):
     CONFIG_DIR = Path.home() / ".config" / "gazelle"
     CONFIG_FILE = CONFIG_DIR / "config.json"
 
-    # Load user styles and build CSS dynamically
-    _user_styles = load_user_styles(CONFIG_DIR)
+    # Load styles: defaults -> omarchy auto-detect -> user overrides
+    _omarchy_styles = load_omarchy_styles()
+    _user_styles = load_user_styles(CONFIG_DIR, _omarchy_styles)
     CSS = build_css(_user_styles)
     BINDINGS = [
         Binding("q", "quit", "Quit"),
