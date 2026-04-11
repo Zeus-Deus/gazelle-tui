@@ -412,6 +412,7 @@ def load_omarchy_styles():
     ]
 
     rounding = 0  # Default: no rounding
+    border_size = 2  # Omarchy default
 
     try:
         for config_file in config_files:
@@ -423,20 +424,35 @@ def load_omarchy_styles():
                     # Skip comments
                     if stripped.startswith("#"):
                         continue
-                    if "rounding" in stripped and "=" in stripped:
+                    if "=" in stripped:
                         key, _, val = stripped.partition("=")
-                        if key.strip() == "rounding":
+                        key_name = key.strip()
+                        if key_name == "rounding":
                             rounding = int(val.strip())
+                        elif key_name == "border_size":
+                            border_size = int(val.strip())
     except Exception:
         return None
 
+    # Rounding takes priority — use rounded borders
     if rounding > 0:
         return {
             "dialog_border": "round",
             "section_border": "round",
         }
 
-    return None
+    # Map Hyprland border_size to closest Textual border style
+    if border_size == 0:
+        border_style = "blank"
+    elif border_size >= 3:
+        border_style = "heavy"
+    else:
+        border_style = "solid"
+
+    return {
+        "dialog_border": border_style,
+        "section_border": border_style,
+    }
 
 def load_user_colors(config_dir: Path):
     """
@@ -472,7 +488,7 @@ def load_user_colors(config_dir: Path):
 
 # Default style values matching the original hardcoded CSS
 DEFAULT_STYLES = {
-    "dialog_border": "thick",
+    "dialog_border": "solid",
     "dialog_width": "60",
     "dialog_padding": "1 2",
     "section_border": "solid",
@@ -599,7 +615,7 @@ def try_create_user_theme_template(config_dir: Path):
 #   none, outer, panel, round, solid, tall, thick, vkey, wide
 # Spacing values use Textual CSS units (e.g. "1 2" = 1 vertical, 2 horizontal)
 [styles]
-#dialog_border = "thick"
+#dialog_border = "solid"
 #dialog_width = "60"
 #dialog_padding = "1 2"
 #section_border = "solid"

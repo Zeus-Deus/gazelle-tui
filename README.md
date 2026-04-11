@@ -397,7 +397,7 @@ dialog_border = "round"
 section_border = "round"
 ```
 
-**Omarchy Users:** Border styles are automatically matched to your system's rounding settings. No configuration needed.
+**Omarchy Users:** Border styles are automatically matched to your Hyprland rounding and border size settings. No configuration needed.
 
 **Available border styles:** `none`, `ascii`, `blank`, `dashed`, `double`, `heavy`, `round`, `solid`, `thick`, `wide`
 
@@ -405,7 +405,7 @@ section_border = "round"
 
 | Option | Default | Description |
 |---|---|---|
-| `dialog_border` | `thick` | Modal dialog border style |
+| `dialog_border` | `solid` | Modal dialog border style |
 | `section_border` | `solid` | Section container border style |
 | `dialog_width` | `60` | Modal dialog width |
 | `dialog_padding` | `1 2` | Modal dialog padding |
