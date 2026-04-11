@@ -387,6 +387,34 @@ Create your own color schemes by editing `~/.config/gazelle/theme.toml`. The fil
 
 Your custom theme appears as "user-theme" in the theme picker (`Ctrl+P`).
 
+## Custom Styles
+
+Customize borders, spacing, and other TUI elements by adding a `[styles]` section to `~/.config/gazelle/theme.toml`:
+
+```toml
+[styles]
+dialog_border = "round"
+section_border = "round"
+```
+
+**Omarchy Users:** Border styles are automatically matched to your system's rounding settings. No configuration needed.
+
+**Available border styles:** `none`, `ascii`, `blank`, `dashed`, `double`, `heavy`, `round`, `solid`, `thick`, `wide`
+
+**All style options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `dialog_border` | `thick` | Modal dialog border style |
+| `section_border` | `solid` | Section container border style |
+| `dialog_width` | `60` | Modal dialog width |
+| `dialog_padding` | `1 2` | Modal dialog padding |
+| `section_margin` | `1 2` | Section margin |
+| `section_padding` | `0 1` | Section padding |
+| `info_section_height` | `5` | Device/Station section height |
+| `cursor_opacity` | `30%` | Selection highlight opacity |
+| `hover_opacity` | `20%` | Hover highlight opacity |
+
 ## Connecting to eduroam
 
 1. Select eduroam network (shows as "802.1x" in Security column)
